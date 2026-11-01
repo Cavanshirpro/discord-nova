@@ -47,10 +47,12 @@ def windows_dlls():
     dumpbin = shutil.which("dumpbin")
     if not objdump and not dumpbin:
         raise SystemExit("objdump or dumpbin is needed to package DLL dependencies")
-    search = [stage / "bin"] + [Path(p) for p in os.environ["PATH"].split(os.pathsep) if p]
+    search = [stage / "bin"]
     build = (root / args.build_dir).resolve()
     search += list(build.glob("vcpkg_installed/*/bin"))
     search += list(Path(os.environ.get("VCToolsRedistDir", "C:/nonexistent")).glob("x64/Microsoft.VC*.CRT"))
+    # Prefer redistributable VC runtime DLLs to copies already installed in System32.
+    search += [Path(p) for p in os.environ["PATH"].split(os.pathsep) if p]
     pending = list(stage.rglob("*.exe")) + list(stage.rglob("*.dll"))
     visited = set()
     windows = Path(os.environ.get("SystemRoot", "C:/Windows")).resolve()
@@ -116,7 +118,7 @@ else:
             run("macdeployqt", app, "-always-overwrite")
         tui = stage / "bin/discord-nova-tui"
         if tui.exists():
-            run("dylibbundler", "-b", "-x", tui, "-d", stage / "lib", "-p", "@executable_path/../lib", "-of")
+            run("dylibbundler", "-b", "-x", tui, "-d", stage / "lib", "-p", "@executable_path/../lib/", "-cd", "-of")
         # Ad-hoc sign after all load paths have been rewritten. No Apple identity required.
         if app.exists():
             run("codesign", "--force", "--deep", "--sign", "-", app)
@@ -124,6 +126,18 @@ else:
             for library in (stage / "lib").glob("*.dylib"):
                 run("codesign", "--force", "--sign", "-", library)
             run("codesign", "--force", "--sign", "-", tui)
+        # Smoke startup must not silently succeed by loading this runner's Homebrew libs.
+        for binary in stage.rglob("*"):
+            if binary.is_file() and not binary.is_symlink():
+                with binary.open("rb") as stream:
+                    magic = stream.read(4)
+                if magic not in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xca\xfe\xba\xbe", b"\xca\xfe\xba\xbf"):
+                    continue
+                dependencies = subprocess.check_output(["otool", "-L", str(binary)], text=True)
+                for line in dependencies.splitlines()[1:]:
+                    dependency = line.strip().split(" (", 1)[0]
+                    if dependency.startswith("/") and not dependency.startswith(("/System/Library/", "/usr/lib/")):
+                        raise SystemExit(f"Non-relocatable macOS dependency: {binary.name}: {dependency}")
         brew = Path(subprocess.check_output(["brew", "--prefix"], text=True).strip())
         for formula in ("qt", "curl", "openssl@3", "zlib", "zstd", "brotli", "libidn2", "libunistring", "libnghttp2", "libnghttp3", "libngtcp2", "libpsl"):
             opt = brew / "opt" / formula
