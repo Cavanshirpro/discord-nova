@@ -1,0 +1,182 @@
+name: Build and test
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-15-intel
+            platform: macos-x64
+          - runner: macos-14
+            platform: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.13'
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build qt6-base-dev libgl1-mesa-dev libssl-dev zlib1g-dev nlohmann-json3-dev
+          python scripts/setup-curl.py
+      - name: macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install qt curl nlohmann-json ninja dylibbundler
+          echo "$(brew --prefix qt)/bin" >> "$GITHUB_PATH"
+      - name: Configure Linux
+        if: runner.os == 'Linux'
+        run: cmake --preset linux -DCMAKE_PREFIX_PATH="$PWD/build/tools/curl" '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
+      - name: Configure macOS
+        if: runner.os == 'macOS'
+        run: cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qt);$(brew --prefix curl);$(brew --prefix nlohmann-json)"
+      - name: Build, test and package
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          preset=linux
+          if [ "$RUNNER_OS" = macOS ]; then preset=macos; fi
+          cmake --build "build/$preset" --parallel 3
+          ctest --test-dir "build/$preset" --output-on-failure
+          python scripts/check-release.py
+          python scripts/package.py --build-dir "build/$preset" --platform "$PLATFORM"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: binaries-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+  msys2:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - msystem: MINGW64
+            preset: mingw64
+            prefix: mingw-w64-x86_64
+            compiler: gcc
+          - msystem: UCRT64
+            preset: ucrt64
+            prefix: mingw-w64-ucrt-x86_64
+            compiler: gcc
+          - msystem: CLANG64
+            preset: clang64
+            prefix: mingw-w64-clang-x86_64
+            compiler: clang
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git ${{ matrix.prefix }}-${{ matrix.compiler }} ${{ matrix.prefix }}-cmake
+            ${{ matrix.prefix }}-ninja ${{ matrix.prefix }}-qt6-base ${{ matrix.prefix }}-curl
+            ${{ matrix.prefix }}-nlohmann-json ${{ matrix.prefix }}-zlib ${{ matrix.prefix }}-python
+      - name: Build and test in matching MSYS2 environment
+        env:
+          PRESET: ${{ matrix.preset }}
+        run: sh scripts/build.sh --preset "$PRESET" --jobs 3
+      - name: Package and verify installed runtimes
+        env:
+          PRESET: ${{ matrix.preset }}
+        run: |
+          python scripts/check-release.py
+          python scripts/package.py --build-dir "build/$PRESET" --platform "windows-x64-$PRESET"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: binaries-windows-x64-${{ matrix.preset }}
+          path: dist/*
+          if-no-files-found: error
+  msvc:
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.13'
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: x64
+      - uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          archives: qtbase
+          cache: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: microsoft/vcpkg
+          ref: 9a5dfef5d1a0438a7d24856a85bd60f309d355e9
+          path: build/tools/vcpkg
+          persist-credentials: false
+      - name: Bootstrap dependencies
+        shell: pwsh
+        run: |
+          & ./build/tools/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          if ($LASTEXITCODE -ne 0) { throw 'vcpkg bootstrap failed' }
+          "VCPKG_ROOT=$PWD/build/tools/vcpkg" >> $env:GITHUB_ENV
+      - name: Build, test and package from Developer PowerShell
+        shell: pwsh
+        run: |
+          ./scripts/build.ps1 -Toolchain msvc -Jobs 3 -Package
+          python scripts/check-release.py
+          if ($LASTEXITCODE -ne 0) { throw 'Release validation failed' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: binaries-windows-x64-msvc
+          path: dist/*
+          if-no-files-found: error
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - run: |
+          python scripts/check-release.py
+          python scripts/package.py --platform source --source
+          python -m compileall -q scripts tests
+          sh -n scripts/build.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: source
+          path: dist/*
+          if-no-files-found: error

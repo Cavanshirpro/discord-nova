@@ -1,0 +1,70 @@
+name: Publish release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        default: v0.1.0
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  build:
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate tag and release metadata
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+        run: python scripts/check-release.py --tag "$REQUESTED_TAG"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Validate complete platform matrix and checksums
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          v = json.loads(Path('release.json').read_text())['version']
+          platforms = ['linux-x64', 'linux-arm64', 'macos-x64', 'macos-arm64', 'windows-x64-msvc', 'windows-x64-mingw64', 'windows-x64-ucrt64', 'windows-x64-clang64', 'source']
+          archives = []
+          for platform in platforms:
+              ext = '.zip' if platform.startswith('windows') or platform == 'source' else '.tar.gz'
+              path = Path('dist') / f'discord-nova-v{v}-{platform}{ext}'
+              assert path.is_file(), f'Missing release asset: {path.name}'
+              checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert path.with_name(path.name + '.sha256').read_text().split()[0] == checksum
+              archives.append(f'{checksum}  {path.name}\n')
+          Path('dist/SHA256SUMS').write_text(''.join(archives))
+          PY
+      - name: Publish tested release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if gh release view "$REQUESTED_TAG" --json isDraft > existing.json 2>/dev/null; then
+            python -c 'import json; assert json.load(open("existing.json"))["isDraft"], "Refusing to overwrite a published release"'
+            gh release upload "$REQUESTED_TAG" dist/* --clobber
+            gh release edit "$REQUESTED_TAG" --title "discord-nova $REQUESTED_TAG" --notes-file release.md --draft=false --latest
+          else
+            gh release create "$REQUESTED_TAG" --verify-tag --title "discord-nova $REQUESTED_TAG" --notes-file release.md --latest dist/*
+          fi

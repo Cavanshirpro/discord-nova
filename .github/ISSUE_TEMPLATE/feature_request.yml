@@ -1,0 +1,11 @@
+name: Feature request
+description: Suggest an improvement for the GUI, TUI or shared core.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: What should change and why?
+      description: Explain the user action and expected behavior. Note GUI, TUI or both.
+    validations:
+      required: true

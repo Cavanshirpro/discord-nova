@@ -1,0 +1,22 @@
+name: Bug report
+description: Report a reproducible client or build failure. Never include a token.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Release / commit and platform
+      placeholder: v0.1.0, Windows 11 x64, MINGW64, GUI
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps, expected behavior and actual result
+      description: Prefer Demo or a local fixture. Remove credentials and private messages.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics

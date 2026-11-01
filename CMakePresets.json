@@ -1,0 +1,29 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {"major": 3, "minor": 25, "patch": 0},
+  "configurePresets": [
+    {"name": "base", "hidden": true, "generator": "Ninja", "binaryDir": "${sourceDir}/build/${presetName}", "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}},
+    {"name": "default", "inherits": "base", "displayName": "Native compiler (Linux / macOS / developer shell)"},
+    {"name": "linux", "inherits": "base", "displayName": "Linux GCC / Clang"},
+    {"name": "macos", "inherits": "base", "displayName": "macOS Apple Clang"},
+    {"name": "msvc", "inherits": "base", "displayName": "Windows MSVC (Developer Command Prompt / PowerShell)", "cacheVariables": {"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake", "VCPKG_TARGET_TRIPLET": "x64-windows"}},
+    {"name": "mingw64", "inherits": "base", "environment": {"PATH": "C:/msys64/mingw64/bin;$penv{PATH}"}, "cacheVariables": {"CMAKE_CXX_COMPILER": "C:/msys64/mingw64/bin/g++.exe", "CMAKE_MAKE_PROGRAM": "C:/msys64/mingw64/bin/ninja.exe", "CMAKE_PREFIX_PATH": "C:/msys64/mingw64"}},
+    {"name": "ucrt64", "inherits": "base", "environment": {"PATH": "C:/msys64/ucrt64/bin;$penv{PATH}"}, "cacheVariables": {"CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe", "CMAKE_MAKE_PROGRAM": "C:/msys64/ucrt64/bin/ninja.exe", "CMAKE_PREFIX_PATH": "C:/msys64/ucrt64"}},
+    {"name": "clang64", "inherits": "base", "environment": {"PATH": "C:/msys64/clang64/bin;$penv{PATH}"}, "cacheVariables": {"CMAKE_CXX_COMPILER": "C:/msys64/clang64/bin/clang++.exe", "CMAKE_MAKE_PROGRAM": "C:/msys64/clang64/bin/ninja.exe", "CMAKE_PREFIX_PATH": "C:/msys64/clang64"}}
+  ],
+  "buildPresets": [
+    {"name": "default", "configurePreset": "default"}, {"name": "linux", "configurePreset": "linux"},
+    {"name": "macos", "configurePreset": "macos"}, {"name": "msvc", "configurePreset": "msvc"},
+    {"name": "mingw64", "configurePreset": "mingw64"}, {"name": "ucrt64", "configurePreset": "ucrt64"},
+    {"name": "clang64", "configurePreset": "clang64"}
+  ],
+  "testPresets": [
+    {"name": "default", "configurePreset": "default", "output": {"outputOnFailure": true}},
+    {"name": "linux", "configurePreset": "linux", "output": {"outputOnFailure": true}},
+    {"name": "macos", "configurePreset": "macos", "output": {"outputOnFailure": true}},
+    {"name": "msvc", "configurePreset": "msvc", "output": {"outputOnFailure": true}},
+    {"name": "mingw64", "configurePreset": "mingw64", "output": {"outputOnFailure": true}},
+    {"name": "ucrt64", "configurePreset": "ucrt64", "output": {"outputOnFailure": true}},
+    {"name": "clang64", "configurePreset": "clang64", "output": {"outputOnFailure": true}}
+  ]
+}
