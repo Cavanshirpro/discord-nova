@@ -137,8 +137,13 @@ else:
                 if magic not in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xca\xfe\xba\xbe", b"\xca\xfe\xba\xbf"):
                     continue
                 dependencies = subprocess.check_output(["otool", "-L", str(binary)], text=True)
+                # otool -L includes LC_ID_DYLIB before imported libraries. A library's
+                # own install ID is not a load dependency and may retain a vendor path.
+                own_ids = {line.strip() for line in subprocess.check_output(["otool", "-D", str(binary)], text=True).splitlines()[1:]}
                 for line in dependencies.splitlines()[1:]:
                     dependency = line.strip().split(" (", 1)[0]
+                    if dependency in own_ids:
+                        continue
                     if dependency.startswith("/") and not dependency.startswith(("/System/Library/", "/usr/lib/")):
                         raise SystemExit(f"Non-relocatable macOS dependency: {binary.name}: {dependency}")
         brew = Path(subprocess.check_output(["brew", "--prefix"], text=True).strip())
