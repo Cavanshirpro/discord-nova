@@ -43,8 +43,8 @@ process environment overrides are available for both frontends:
   impersonation. Other target names must exist in this pinned provider release.
 - `NOVA_CA_BUNDLE=/absolute/path/roots.pem` selects an explicit trusted PEM bundle.
 
-The app otherwise uses `cacert.pem` beside the running executable, including
-inside a macOS app bundle. The distributed bundle is the pinned Mozilla export
+The app otherwise uses `cacert.pem` beside the running executable, or in
+`Contents/Resources` inside a macOS GUI app bundle. The distributed bundle is the pinned Mozilla export
 dated 2026-10-20. TLS certificate and hostname checks stay enabled. Never disable
 them to make a connection work.
 

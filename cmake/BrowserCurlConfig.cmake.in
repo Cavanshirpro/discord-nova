@@ -1,11 +1,19 @@
 if(NOT TARGET CURL::libcurl)
-    add_library(CURL::libcurl SHARED IMPORTED GLOBAL)
-    set_target_properties(CURL::libcurl PROPERTIES
+    # Match upstream CURL target names and per-config properties. vcpkg's
+    # find_package wrapper inspects libcurl_shared even with an external CURL_DIR.
+    add_library(CURL::libcurl_shared SHARED IMPORTED GLOBAL)
+    set_target_properties(CURL::libcurl_shared PROPERTIES
         IMPORTED_LOCATION "@NOVA_BROWSER_LIBRARY@"
+        IMPORTED_LOCATION_RELEASE "@NOVA_BROWSER_LIBRARY@"
+        IMPORTED_LOCATION_DEBUG "@NOVA_BROWSER_LIBRARY@"
         INTERFACE_INCLUDE_DIRECTORIES "@NOVA_BROWSER_RUNTIME_DIR@/include")
     if(WIN32)
-        set_target_properties(CURL::libcurl PROPERTIES IMPORTED_IMPLIB "@NOVA_BROWSER_IMPLIB@")
+        set_target_properties(CURL::libcurl_shared PROPERTIES
+            IMPORTED_IMPLIB "@NOVA_BROWSER_IMPLIB@"
+            IMPORTED_IMPLIB_RELEASE "@NOVA_BROWSER_IMPLIB@"
+            IMPORTED_IMPLIB_DEBUG "@NOVA_BROWSER_IMPLIB@")
     endif()
+    add_library(CURL::libcurl ALIAS CURL::libcurl_shared)
 endif()
 set(CURL_FOUND TRUE)
 set(CURL_VERSION 8.23.0)

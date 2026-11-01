@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QFile>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -66,19 +67,6 @@ public:
         split->setStretchFactor(2, 1); split->setSizes({200, 220, 700}); layout->addWidget(split, 1);
         status_ = new QLabel; status_->setWordWrap(true); layout->addWidget(status_);
         setCentralWidget(root);
-        setStyleSheet(R"(
-            QWidget { background: #151923; color: #e8edf7; font-size: 14px; }
-            QLabel#brand { color: #91abff; font-size: 28px; font-weight: 800; letter-spacing: 4px; }
-            QLabel#heading { font-size: 20px; font-weight: 700; padding: 10px; }
-            QListWidget, QTextBrowser { background: #1c2230; border: 1px solid #30394d; border-radius: 8px; padding: 10px; }
-            QListWidget::item { padding: 10px 5px; }
-            QListWidget::item:selected { background: #34466e; border-radius: 5px; }
-            QLineEdit { background: #242c3d; border: 1px solid #3d4962; border-radius: 6px; padding: 10px; }
-            QPushButton { background: #354972; border: 1px solid #506a9e; border-radius: 6px; padding: 10px 16px; }
-            QPushButton:hover { background: #456196; }
-            QPushButton:disabled { color: #7b8497; background: #242b39; border-color: #30394d; }
-            QSplitter::handle { background: #151923; width: 8px; }
-        )");
         QObject::connect(connect_, &QPushButton::clicked, this, [this] {
             if (service_.connect(token_->text().toStdString(), profile_->currentData().toString().toStdString())) token_->clear();
         });
@@ -172,6 +160,9 @@ int main(int argc, char** argv) {
     QApplication::setApplicationName("discord-nova"); QApplication::setApplicationVersion(NOVA_VERSION);
     const auto args = app.arguments();
     if (args.contains("--version")) { qInfo("discord-nova " NOVA_VERSION); return 0; }
+    QFile stylesheet(":/nova/styles/nova.qss");
+    if (!stylesheet.open(QIODevice::ReadOnly)) qFatal("Cannot load the embedded Nova QSS theme");
+    app.setStyleSheet(QString::fromUtf8(stylesheet.readAll()));
     const bool smoke = args.contains("--smoke-test");
     Window window(args.contains("--demo") || smoke); window.show();
     if (smoke) {

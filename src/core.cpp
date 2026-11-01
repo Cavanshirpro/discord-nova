@@ -32,7 +32,12 @@ Options frontend_options() {
         executable = std::filesystem::read_symlink("/proc/self/exe", error);
 #endif
         if (!executable.empty()) {
-            const auto bundle = executable.parent_path() / "cacert.pem";
+            auto bundle = executable.parent_path() / "cacert.pem";
+#ifdef __APPLE__
+            // App resources belong outside MacOS, where deployment tools expect binaries.
+            if (executable.parent_path().filename() == "MacOS")
+                bundle = executable.parent_path().parent_path() / "Resources/cacert.pem";
+#endif
             if (std::filesystem::is_regular_file(bundle)) result.transport.ca_bundle = bundle.string();
         }
     }

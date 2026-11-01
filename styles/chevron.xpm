@@ -1,0 +1,11 @@
+/* XPM: built-in Qt image format; no SVG plugin dependency. */
+static const char *nova_chevron[] = {
+"9 5 2 1",
+"  c None",
+". c #151923",
+".........",
+" ....... ",
+"  .....  ",
+"   ...   ",
+"    .    "
+};

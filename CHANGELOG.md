@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Embed a separate Qt QSS theme with profile selector, focus, hover and disabled states.
+
 - Chrome 152 TLS/HTTP browser profile in both frontends, backed by a pinned
   curl-impersonate SDK through discord.cpp-self.
 - Profile selection, explicit trust bundles, and local ClientHello/HTTP2/HTTPS/WSS tests.

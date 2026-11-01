@@ -135,6 +135,9 @@ ctest --preset default
 PowerShell equivalents: `-TuiOnly`, `-GuiOnly`, `-SkipTests`, `-Jobs 4`, `-Package`.
 Use `-SystemCurl` to disable browser profiles in the PowerShell/CMD wrapper.
 A TUI-only build does not require Qt. Both interfaces still use discord.cpp-self.
+The Qt GUI theme lives in `styles/nova.qss` and is embedded by `qt_add_resources`.
+Edit QSS and rebuild the GUI to change the style; binary packages need no separate
+stylesheet path. Layout and application behavior remain in the C++ widgets.
 To develop against a local library checkout:
 
 ```sh

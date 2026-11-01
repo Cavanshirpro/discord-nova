@@ -1,0 +1,68 @@
+/* Nova's Qt Widgets theme. Embedded with Qt resources; no external theme path required. */
+QWidget {
+    background: #151923;
+    color: #e8edf7;
+    font-size: 14px;
+    selection-background-color: #34466e;
+    selection-color: #ffffff;
+}
+QLabel#brand { color: #91abff; font-size: 28px; font-weight: 800; }
+QLabel#heading { font-size: 20px; font-weight: 700; padding: 10px; }
+QListWidget, QTextBrowser {
+    background: #1c2230;
+    border: 1px solid #30394d;
+    border-radius: 8px;
+    padding: 10px;
+}
+QListWidget::item { padding: 10px 5px; }
+QListWidget::item:hover { background: #29354e; border-radius: 5px; }
+QListWidget::item:selected { background: #34466e; border-radius: 5px; color: #ffffff; }
+QLineEdit, QComboBox {
+    background: #242c3d;
+    border: 1px solid #3d4962;
+    border-radius: 6px;
+    padding: 10px;
+}
+QLineEdit:focus, QComboBox:focus, QListWidget:focus, QTextBrowser:focus {
+    border: 1px solid #91abff;
+}
+QComboBox { padding-right: 34px; min-width: 180px; }
+QComboBox::drop-down {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 26px;
+    background: #91abff;
+    border: none;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QComboBox::down-arrow { image: url(:/nova/styles/chevron.xpm); width: 9px; height: 5px; }
+QComboBox QAbstractItemView {
+    background: #242c3d;
+    color: #e8edf7;
+    border: 1px solid #506a9e;
+    selection-background-color: #34466e;
+    selection-color: #ffffff;
+    padding: 4px;
+}
+QPushButton {
+    background: #354972;
+    border: 1px solid #506a9e;
+    border-radius: 6px;
+    padding: 10px 16px;
+}
+QPushButton:hover { background: #456196; }
+QPushButton:pressed { background: #293b60; }
+QPushButton:focus { border: 1px solid #b4c5ff; }
+QPushButton:disabled, QLineEdit:disabled, QComboBox:disabled {
+    color: #7b8497;
+    background: #242b39;
+    border-color: #30394d;
+}
+QComboBox::drop-down:disabled { background: #3d4962; }
+QSplitter::handle { background: #151923; width: 8px; }
+QScrollBar:vertical { background: #1c2230; width: 12px; margin: 0; }
+QScrollBar::handle:vertical { background: #465676; min-height: 28px; border-radius: 5px; }
+QScrollBar::handle:vertical:hover { background: #627ba6; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }

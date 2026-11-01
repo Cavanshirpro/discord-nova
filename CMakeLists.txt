@@ -68,6 +68,7 @@ endif()
 if(NOVA_BUILD_GUI)
     find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets)
     qt_add_executable(discord-nova-gui src/gui.cpp)
+    qt_add_resources(discord-nova-gui nova_theme PREFIX "/nova" FILES styles/nova.qss styles/chevron.xpm)
     set_target_properties(discord-nova-gui PROPERTIES
         WIN32_EXECUTABLE TRUE MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_GUI_IDENTIFIER io.github.cavanshirpro.discord-nova

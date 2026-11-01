@@ -87,6 +87,8 @@ if args.source:
         copy(root / relative, stage / relative)
 else:
     build = (root / args.build_dir).resolve()
+    cache = (build / "CMakeCache.txt").read_text()
+    browser_enabled = "NOVA_BROWSER_IDENTITY:BOOL=ON" in cache
     run("cmake", "--install", build, "--prefix", stage, "--component", "Runtime", "--config", "Release")
     licenses = stage / "share/licenses"
     for dep in ("discord_self", "ftxui"):
@@ -119,13 +121,26 @@ else:
             shutil.copytree(qt / "licenses", licenses / "Qt", dirs_exist_ok=True)
     elif sys.platform == "darwin":
         app = stage / "discord-nova-gui.app"
+        tui = stage / "bin/discord-nova-tui"
+        if browser_enabled:
+            runtime = Path(re.search(r"^NOVA_BROWSER_RUNTIME_DIR:INTERNAL=(.+)$", cache, re.M)[1])
+            # CMake removes build RPATHs during installation. Place the self-contained
+            # SDK explicitly and resolve its load command before Qt deployment.
+            name = "libcurl-impersonate.4.dylib"
+            for executable, destination, load_path in (
+                (app / "Contents/MacOS/discord-nova-gui", app / "Contents/Frameworks" / name, "@executable_path/../Frameworks/" + name),
+                (tui, stage / "lib" / name, "@executable_path/../lib/" + name),
+            ):
+                if executable.exists():
+                    copy(runtime / name, destination)
+                    run("install_name_tool", "-id", "@rpath/" + name, destination)
+                    run("install_name_tool", "-change", "@rpath/" + name, load_path, executable)
         if app.exists():
             deployment = subprocess.run(["macdeployqt", str(app), "-always-overwrite"], check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             print(deployment.stdout)
             if "ERROR:" in deployment.stdout:
                 raise SystemExit("Qt deployment reported unresolved dependencies")
-        tui = stage / "bin/discord-nova-tui"
-        if tui.exists():
+        if tui.exists() and not browser_enabled:
             run("dylibbundler", "-b", "-x", tui, "-d", stage / "lib", "-p", "@executable_path/../lib/", "-cd", "-of")
         # Ad-hoc sign after all load paths have been rewritten. No Apple identity required.
         if app.exists():
@@ -161,7 +176,6 @@ else:
                         if path.is_file():
                             copy(path, licenses / formula / path.relative_to(opt))
     else:
-        browser_enabled = "NOVA_BROWSER_IDENTITY:BOOL=ON" in (build / "CMakeCache.txt").read_text()
         if not browser_enabled:
             for library in (root / "build/tools/curl/lib").glob("libcurl.so*"):
                 copy(library, stage / "lib" / library.name)
