@@ -139,10 +139,11 @@ else:
                     if dependency.startswith("/") and not dependency.startswith(("/System/Library/", "/usr/lib/")):
                         raise SystemExit(f"Non-relocatable macOS dependency: {binary.name}: {dependency}")
         brew = Path(subprocess.check_output(["brew", "--prefix"], text=True).strip())
-        for formula in ("qt", "curl", "openssl@3", "zlib", "zstd", "brotli", "libidn2", "libunistring", "libnghttp2", "libnghttp3", "libngtcp2", "libpsl"):
+        formulas = {"qt", "curl"} | set(subprocess.check_output(["brew", "deps", "--formula", "qt", "curl"], text=True).splitlines())
+        for formula in sorted(formulas):
             opt = brew / "opt" / formula
             if opt.is_dir():
-                for pattern in ("LICENSE*", "COPYING*", "share/licenses/**/*"):
+                for pattern in ("LICENSE*", "LICENSE*/**/*", "COPYING*", "share/licenses/**/*", ".brew/*.rb", "INSTALL_RECEIPT.json"):
                     for path in opt.glob(pattern):
                         if path.is_file():
                             copy(path, licenses / formula / path.relative_to(opt))

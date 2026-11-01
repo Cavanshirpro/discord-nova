@@ -11,7 +11,7 @@ Distributed runtime notices are included under `share/licenses/` in binary archi
 | curl | [curl source](https://github.com/curl/curl), Linux 8.17.0; other platforms' package versions | curl license |
 | nlohmann/json | [source](https://github.com/nlohmann/json), 3.11+ | MIT |
 | zlib | [source](https://github.com/madler/zlib) | Zlib |
-| OpenSSL (where used by curl) | [source](https://github.com/openssl/openssl) | Apache-2.0 (3.x) |
+| OpenSSL (where used by curl) | [source](https://github.com/openssl/openssl), package-manager version | Apache-2.0 |
 
 Windows MSVC dependencies use the vcpkg baseline in `vcpkg.json`; MSYS2 and
 Homebrew dependencies follow their package repositories at build time. Those
