@@ -17,6 +17,9 @@ It is an early foundation; full Discord feature parity is still ahead.
 | [Build guide](docs/BUILDING.md) | [Türkçe](docs/README.tr.md)
 | [Roadmap](ROADMAP.md) | [Release notes](release.md)
 
+Development builds additionally support [Chrome browser/TLS identity](docs/BROWSER_IDENTITY.md).
+Published v0.1.0 binaries predate that feature.
+
 ## What works
 
 - Qt Widgets desktop GUI and FTXUI keyboard/mouse terminal interface.

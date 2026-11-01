@@ -3,6 +3,11 @@
 All commands run from the repository root. Do not mix Qt, curl or C++ runtimes
 from different Windows toolchains. Every preset has its own build directory.
 
+Development builds enable `NOVA_BROWSER_IDENTITY=ON` by default. CMake downloads
+the pinned, SHA-256-verified curl-impersonate SDK and Mozilla CA bundle for the
+selected platform. See [browser identity](BROWSER_IDENTITY.md) for profiles and
+trust configuration. The published v0.1.0 archives predate this feature.
+
 ## Windows: MSYS2
 
 Install [MSYS2](https://www.msys2.org/) and update it. In the matching terminal:
@@ -65,6 +70,7 @@ $env:PATH = "$env:CMAKE_PREFIX_PATH/bin;$env:PATH"
 ```
 
 The manifest installs curl with the `websockets` feature, nlohmann/json and zlib.
+Browser builds link the pinned SDK instead of that system curl.
 The GUI uses the prebuilt Qt installation. In CMD, use `set VAR=value` and
 `scripts\build.cmd -Toolchain msvc`. The same preset works from the VS Code
 developer terminal. MSYS2's CMake/Ninja must not take precedence in this shell.
@@ -76,20 +82,21 @@ Ubuntu 24.04 x64/ARM64:
 ```sh
 sudo apt-get update
 sudo apt-get install -y build-essential git cmake ninja-build python3 qt6-base-dev libgl1-mesa-dev libssl-dev zlib1g-dev nlohmann-json3-dev
-python3 scripts/setup-curl.py
-cmake --preset linux -DCMAKE_PREFIX_PATH="$PWD/build/tools/curl" '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
+cmake --preset linux '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
 sh scripts/build.sh --preset linux --jobs 4
 ./build/linux/discord-nova-gui --demo
 ./build/linux/discord-nova-tui --demo
 python3 scripts/package.py --build-dir build/linux --platform linux-x64
 ```
 
-`setup-curl.py` downloads curl 8.17.0 from curl.se, validates a pinned SHA-256 and
-builds it with OpenSSL and WebSockets. Use it when system curl omits ws/wss.
-Reconfiguring via `build.sh` preserves the prefix and RPATH in the CMake cache.
+For a system-curl build, pass `--system-curl` to `build.sh` or
+`-DNOVA_BROWSER_IDENTITY=OFF` to CMake. If system curl omits ws/wss,
+`setup-curl.py` builds pinned curl 8.17.0; configure with
+`-DCMAKE_PREFIX_PATH="$PWD/build/tools/curl"`. Reconfiguring via `build.sh`
+preserves the prefix and RPATH in the CMake cache.
 Other distributions need equivalent packages and a C++20 compiler. Wayland/X11
 and font support come from your Qt runtime packages. Published Linux binaries
-use Ubuntu 24.04 system Qt/OpenSSL; the custom curl is included in `lib/`.
+use Ubuntu 24.04 system Qt; the selected curl runtime is included in `lib/`.
 
 ## macOS
 
@@ -126,6 +133,7 @@ ctest --preset default
 ```
 
 PowerShell equivalents: `-TuiOnly`, `-GuiOnly`, `-SkipTests`, `-Jobs 4`, `-Package`.
+Use `-SystemCurl` to disable browser profiles in the PowerShell/CMD wrapper.
 A TUI-only build does not require Qt. Both interfaces still use discord.cpp-self.
 To develop against a local library checkout:
 
@@ -135,13 +143,16 @@ cmake --preset default -DNOVA_DISCORD_SOURCE=/absolute/path/to/discord.cpp-self
 
 Do not publish a release built against uncommitted local dependency changes.
 Release CI downloads the exact reviewed library commit. If a library change is
-needed, report/reproduce it there, release it, then update the pin here.
+needed, report/reproduce and commit it there, then update the reviewed pin here.
+Published releases must document the precise dependency commit.
 
 ## Test and release
 
 `ctest` runs core tests, local REST/Gateway integration tests and demo startup
-checks for enabled frontends. Nothing logs into a real account. `package.py`
-installs the Runtime component into a fresh staging directory, deploys runtimes,
+checks for enabled frontends. Nothing logs into a real account.
+Browser builds also check Chrome ClientHello, HTTP/2 settings, connection reuse,
+HTTPS/WSS integration and rejection of untrusted certificates/wrong hostnames.
+`package.py` installs the Runtime component into a fresh staging directory, deploys runtimes,
 checks staged demo startup, includes notices, then creates an archive and SHA-256.
 An existing staging directory is rejected; choose a fresh label or clean it
 manually after reviewing its path.

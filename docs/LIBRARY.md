@@ -1,6 +1,8 @@
 # discord.cpp-self integration
 
-v0.1.0 pins discord.cpp-self v0.2.1, commit
+Development pins discord.cpp-self commit
+`d9ddf84e817960ce575b5d3eb59fb1dab36132aa` (v0.2.2 plus the optional
+browser identity API). Published Nova v0.1.0 pins v0.2.1 at
 `a8681265e0c6ee58017639070c891d06d9624d8e`. CMake links `discord::self`.
 No library fork or replacement network implementation is included in Nova.
 
@@ -23,8 +25,12 @@ library's Channel model; history and sends still use typed library methods.
 - `Client::run()` resets its stop flag during startup. Nova repeats `close()`
   until the Gateway thread exits before joining, covering immediate disconnect.
   The offline integration test exercises this sequence. No library files changed.
-- Gateway needs curl with WebSocket support. The Linux workflow builds a pinned
-  curl; MSVC uses vcpkg's `websockets` feature; MSYS2/Homebrew provide it.
+- Gateway needs curl with WebSocket support. Development browser builds use the
+  pinned curl-impersonate SDK on every platform. System-curl builds use the
+  platform dependencies described in [Building](BUILDING.md).
+- The library now exposes `browser_profile`, `ca_bundle` and capability detection.
+  Nova passes the same selected transport options to REST and Gateway. See
+  [Browser identity](BROWSER_IDENTITY.md) for behavior and offline test coverage.
 - HTTP calls are synchronous. They run outside the UI thread. Shutdown waits for
   an in-flight REST call to finish or time out; UI actions do not cancel a send.
 - Native media remains disabled in this release. Media work should be implemented

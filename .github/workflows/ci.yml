@@ -43,7 +43,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build qt6-base-dev libgl1-mesa-dev libssl-dev zlib1g-dev nlohmann-json3-dev
-          python scripts/setup-curl.py
       - name: macOS dependencies
         if: runner.os == 'macOS'
         run: |
@@ -52,7 +51,7 @@ jobs:
           echo "$(brew --prefix qtbase)/bin" >> "$GITHUB_PATH"
       - name: Configure Linux
         if: runner.os == 'Linux'
-        run: cmake --preset linux -DCMAKE_PREFIX_PATH="$PWD/build/tools/curl" '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
+        run: cmake --preset linux '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
       - name: Configure macOS
         if: runner.os == 'macOS'
         run: cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase);$(brew --prefix curl);$(brew --prefix nlohmann-json)"

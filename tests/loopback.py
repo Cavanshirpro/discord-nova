@@ -10,12 +10,14 @@ import subprocess
 import sys
 import threading
 import time
+import ssl
 
 events = queue.Queue()
 errors = []
 history_count = 0
 gateway_ready = threading.Event()
 events_sent = threading.Event()
+browser = len(sys.argv) == 5
 
 
 def message(identifier, content):
@@ -30,6 +32,8 @@ class HTTP(http.server.BaseHTTPRequestHandler):
         global history_count
         try:
             assert self.headers.get("Authorization") == "offline-token"
+            if browser:
+                assert "Chrome/152." in self.headers.get("User-Agent", ""), "REST lost the selected browser identity"
             status = 200
             if self.path == "/api/users/@me":
                 data = {"id": "100", "username": "fixture", "global_name": "Fixture"}
@@ -118,6 +122,8 @@ class Gateway(socketserver.BaseRequestHandler):
             headers = b""
             while b"\r\n\r\n" not in headers:
                 headers += exact(sock, 1)
+            if browser:
+                assert b"Chrome/152." in headers, "Gateway lost the selected browser identity"
             key = next(line.split(b":", 1)[1].strip() for line in headers.split(b"\r\n") if line.lower().startswith(b"sec-websocket-key:"))
             accept = base64.b64encode(hashlib.sha1(key + b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest())
             sock.sendall(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept + b"\r\n\r\n")
@@ -149,15 +155,35 @@ class Gateway(socketserver.BaseRequestHandler):
 class WebSocketServer(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
+    def get_request(self):
+        connection, address = super().get_request()
+        if hasattr(self, "tls"):
+            connection.settimeout(3)
+            try:
+                connection = self.tls.wrap_socket(connection, server_side=True)
+            except Exception:
+                connection.close()
+                raise
+        return connection, address
+
 
 if __name__ == "__main__":
     http = http.server.ThreadingHTTPServer(("127.0.0.1", 0), HTTP)
     ws = WebSocketServer(("127.0.0.1", 0), Gateway)
-    ws.url = f"ws://127.0.0.1:{ws.server_address[1]}/"
+    if browser:
+        tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls.load_cert_chain(sys.argv[3], sys.argv[4])
+        tls.set_alpn_protocols(["http/1.1"])
+        http.socket = tls.wrap_socket(http.socket, server_side=True)
+        ws.tls = tls
+    ws.url = f"{'wss' if browser else 'ws'}://localhost:{ws.server_address[1]}/"
     for server in (http, ws):
         threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        result = subprocess.run([sys.argv[1], f"http://127.0.0.1:{http.server_port}/api", ws.url], timeout=35)
+        command = [sys.argv[1], f"{'https' if browser else 'http'}://localhost:{http.server_port}/api", ws.url]
+        if browser:
+            command += [sys.argv[2], sys.argv[3]]
+        result = subprocess.run(command, timeout=35)
         if errors:
             print("Fixture errors:", errors, file=sys.stderr)
         sys.exit(result.returncode or bool(errors))

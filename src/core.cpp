@@ -1,8 +1,43 @@
 #include <nova/core.hpp>
 #include <algorithm>
 #include <stdexcept>
+#include <cstdlib>
+#ifdef _WIN32
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 namespace nova {
+Options frontend_options() {
+    Options result;
+    if (discord::supports_browser_impersonation()) result.transport.browser_profile = "chrome152";
+    if (const char* profile = std::getenv("NOVA_BROWSER_PROFILE"))
+        result.transport.browser_profile = std::string_view(profile) == "default" ? "" : profile;
+    if (const char* bundle = std::getenv("NOVA_CA_BUNDLE")) {
+        result.transport.ca_bundle = bundle;
+    } else {
+        std::filesystem::path executable;
+#ifdef _WIN32
+        std::wstring buffer(32768, L'\0');
+        const auto count = GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (count && count < buffer.size()) { buffer.resize(count); executable = buffer; }
+#elif defined(__APPLE__)
+        std::uint32_t size = 0;
+        _NSGetExecutablePath(nullptr, &size);
+        std::string buffer(size, '\0');
+        if (_NSGetExecutablePath(buffer.data(), &size) == 0) executable = std::filesystem::weakly_canonical(buffer.c_str());
+#elif defined(__linux__)
+        std::error_code error;
+        executable = std::filesystem::read_symlink("/proc/self/exe", error);
+#endif
+        if (!executable.empty()) {
+            const auto bundle = executable.parent_path() / "cacert.pem";
+            if (std::filesystem::is_regular_file(bundle)) result.transport.ca_bundle = bundle.string();
+        }
+    }
+    return result;
+}
 std::string visible_text(std::string_view input) {
     std::string out;
     for (unsigned char c : input) {
@@ -90,21 +125,24 @@ void Service::reset() {
     stop_gateway(); rest_.reset();
     mutate([](State& s) { const auto rev = s.revision; s = {}; s.revision = rev; s.busy = true; });
 }
-bool Service::connect(std::string token) {
+bool Service::connect(std::string token, std::optional<std::string> browser_profile) {
     if (token.empty()) { mutate([](State& s) { s.error = "Enter a token or choose Demo."; }); return false; }
-    return submit([this, token = std::move(token)]() mutable {
+    return submit([this, token = std::move(token), browser_profile = std::move(browser_profile)]() mutable {
         reset();
-        rest_ = std::make_unique<discord::Client>(options_.transport);
+        auto transport = options_.transport;
+        if (browser_profile) transport.browser_profile = *browser_profile;
+        rest_ = std::make_unique<discord::Client>(transport);
         rest_->login(token);
         const auto user = rest_->fetch_me();
         const auto guilds = rest_->fetch_guilds();
         mutate([&](State& s) {
             s.connected = true; s.user = user.display_name.empty() ? user.name : user.display_name;
+            s.browser_profile = transport.browser_profile;
             s.guilds = {{"", "Direct Messages"}};
             for (const auto& g : guilds) s.guilds.push_back({g.id.str(), g.name});
             s.status = "Connected. Select a server or Direct Messages.";
         });
-        if (options_.gateway) start_gateway(std::move(token));
+        if (options_.gateway) start_gateway(std::move(token), std::move(transport));
     });
 }
 bool Service::demo() {
@@ -203,8 +241,8 @@ bool Service::send(std::string content) {
         mutate([&](State& s) { upsert(s, std::move(message)); s.status = "Message sent."; });
     });
 }
-void Service::start_gateway(std::string token) {
-    gateway_ = std::make_unique<discord::Client>(options_.transport);
+void Service::start_gateway(std::string token, discord::ClientOptions transport) {
+    gateway_ = std::make_unique<discord::Client>(std::move(transport));
     gateway_->on_ready([this](const discord::Ready&) { mutate([](State& s) { s.live = true; }); });
     gateway_->on_resumed([this] { mutate([](State& s) { s.live = true; }); });
     gateway_->on_message([this](const discord::Message& m) { event([message = convert(m)](State& s) { upsert(s, message); }); });

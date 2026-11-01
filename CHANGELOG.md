@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Chrome 152 TLS/HTTP browser profile in both frontends, backed by a pinned
+  curl-impersonate SDK through discord.cpp-self.
+- Profile selection, explicit trust bundles, and local ClientHello/HTTP2/HTTPS/WSS tests.
+
 ## 0.1.0 — 2026-11-01
 
 - First native C++20 text-client release with Qt GUI and FTXUI TUI.

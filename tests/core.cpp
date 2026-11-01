@@ -16,6 +16,20 @@ int main() {
         require(nova::visible_text("hello\x1b[31m\a\r\nworld") == "hello[31m\nworld", "Remote controls must be inert");
         require(nova::visible_text("Türkçe 🌟") == "Türkçe 🌟", "UTF-8 must survive rendering");
         nova::Service service;
+        {
+            discord::ClientOptions identity;
+            identity.browser_profile = "unsupported_profile";
+            bool rejected = false;
+            try { discord::Client client(identity); } catch (const std::invalid_argument&) { rejected = true; }
+            require(rejected, "Unsupported profiles must fail before authentication");
+            identity.browser_profile = "chrome152";
+            if (discord::supports_browser_impersonation()) { discord::Client client(identity); }
+            else {
+                rejected = false;
+                try { discord::Client client(identity); } catch (const std::invalid_argument&) { rejected = true; }
+                require(rejected, "System curl must not silently simulate impersonation");
+            }
+        }
         require(!service.send("offline"), "Cannot send offline");
         require(!service.connect(""), "Reject empty token");
         require(service.demo(), "Demo accepted");

@@ -14,12 +14,13 @@ static nova::State wait(nova::Service& service, const std::function<bool(const n
 static nova::State idle(nova::Service& s) { return wait(s, [](const auto& v) { return !v.busy; }); }
 static void require(bool v, const char* message) { if (!v) throw std::runtime_error(message); }
 int main(int argc, char** argv) {
-    if (argc != 3) return 2;
+    if (argc != 3 && argc != 5) return 2;
     try {
         nova::Options options;
         options.transport.api_url = argv[1]; options.transport.gateway_url = argv[2];
         options.transport.request_timeout = std::chrono::seconds(3);
         options.transport.max_reconnect_attempts = 0;
+        if (argc == 5) { options.transport.browser_profile = argv[3]; options.transport.ca_bundle = argv[4]; }
         nova::Service service(options);
         service.connect("offline-token");
         auto s = wait(service, [](const auto& v) { return !v.busy && v.live; });

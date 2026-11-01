@@ -10,20 +10,25 @@
 
 int main(int argc, char** argv) {
     bool demo = false, smoke = false;
+    auto options = nova::frontend_options();
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--version") { std::cout << "discord-nova " NOVA_VERSION "\n"; return 0; }
         if (arg == "--help" || arg == "-h") {
-            std::cout << "discord-nova-tui [--demo] [--version]\n"
+            std::cout << "discord-nova-tui [--demo] [--version] [--browser-profile chrome152|default]\n"
                          "Tab / Shift+Tab: focus, arrows: select, Enter: activate/send, Ctrl+Q: quit.\n"
                          "DISCORD_TOKEN can prefill the masked token field. Tokens are never saved.\n";
             return 0;
         }
         if (arg == "--demo") demo = true;
         else if (arg == "--smoke-test") smoke = true;
+        else if (arg == "--browser-profile" && i + 1 < argc) {
+            options.transport.browser_profile = argv[++i];
+            if (options.transport.browser_profile == "default") options.transport.browser_profile.clear();
+        }
         else { std::cerr << "Unknown argument. See --help.\n"; return 2; }
     }
-    nova::Service service;
+    nova::Service service(options);
     if (demo || smoke) service.demo();
     if (smoke) {
         for (int i = 0; i < 200; ++i) {
@@ -39,8 +44,17 @@ int main(int argc, char** argv) {
     bool sending = false;
     if (const auto* value = std::getenv("DISCORD_TOKEN")) token = value;
     InputOption password; password.password = true;
+    std::vector<std::string> profile_names = {"Default TLS"}, profile_values = {""};
+    int profile_index = 0;
+    if (discord::supports_browser_impersonation()) { profile_names.push_back("Chrome 152"); profile_values.push_back("chrome152"); }
+    if (!options.transport.browser_profile.empty()) {
+        auto found = std::find(profile_values.begin(), profile_values.end(), options.transport.browser_profile);
+        if (found == profile_values.end()) { profile_names.push_back(nova::visible_text(options.transport.browser_profile)); profile_values.push_back(options.transport.browser_profile); }
+        profile_index = static_cast<int>(std::find(profile_values.begin(), profile_values.end(), options.transport.browser_profile) - profile_values.begin());
+    }
+    auto profile = Toggle(&profile_names, &profile_index);
     auto token_input = Input(&token, "Account token (memory only)", password);
-    auto connect = Button("Connect", [&] { if (service.connect(token)) token.clear(); });
+    auto connect = Button("Connect", [&] { if (service.connect(token, profile_values[static_cast<std::size_t>(profile_index)])) token.clear(); });
     auto try_demo = Button("Demo", [&] { service.demo(); token.clear(); });
     auto disconnect = Button("Disconnect", [&] { service.disconnect(); });
     auto refresh = Button("Refresh", [&] { service.refresh(); });
@@ -70,7 +84,7 @@ int main(int argc, char** argv) {
     std::vector<std::string> message_lines;
     auto history = Menu(&message_lines, &message_index);
     auto body = Container::Horizontal({guilds, channels, history});
-    auto all = Container::Vertical({auth, body, composer});
+    auto all = Container::Vertical({auth, profile, body, composer});
     nova::State state;
     std::uint64_t revision = static_cast<std::uint64_t>(-1);
     auto renderer = Renderer(all, [&] {
@@ -105,11 +119,11 @@ int main(int argc, char** argv) {
             }
         }
         auto title = hbox({text(" NOVA ") | bold | color(Color::Cyan), text("v" NOVA_VERSION), filler(),
-                           text(nova::visible_text(state.user) + (state.demo ? "  DEMO " : state.live ? "  LIVE " : "  REST "))});
+                           text(nova::visible_text(state.user) + (state.demo ? "  DEMO " : state.live ? "  LIVE " : "  REST ") + (state.connected && !state.demo ? (state.browser_profile.empty() ? "default TLS" : nova::visible_text(state.browser_profile)) : ""))});
         auto columns = hbox({vbox({text("SERVERS / DMs") | bold, separator(), guilds->Render() | vscroll_indicator | yframe | flex}) | size(WIDTH, EQUAL, 23) | border,
                              vbox({text("CHANNELS") | bold, separator(), channels->Render() | vscroll_indicator | yframe | flex}) | size(WIDTH, EQUAL, 25) | border,
                              vbox({text("CONVERSATION") | bold, separator(), history->Render() | vscroll_indicator | yframe | flex}) | flex | border}) | flex;
-        return vbox({title, auth->Render() | border, columns,
+        return vbox({title, auth->Render() | border, hbox({text(" Next connection: "), profile->Render(), text(" | TLS verification on") | dim}), columns,
                      hbox({input->Render() | flex, send->Render()}) | border,
                      paragraph(nova::visible_text(state.error.empty() ? state.status : state.error)) | color(state.error.empty() ? Color::GrayLight : Color::RedLight),
                      text(state.busy ? " Working..." : " Tab: focus | Arrows: select/scroll | Enter: activate/send | Ctrl+Q: quit") | dim}) | flex;

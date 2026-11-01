@@ -1,6 +1,7 @@
 #include <nova/core.hpp>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -17,7 +18,7 @@
 static QString qtext(const std::string& value) { return QString::fromStdString(nova::visible_text(value)); }
 class Window : public QMainWindow {
 public:
-    explicit Window(bool demo) {
+    explicit Window(bool demo) : service_(nova::frontend_options()) {
         setWindowTitle("discord-nova " NOVA_VERSION);
         resize(1160, 760); setMinimumSize(760, 520);
         auto* root = new QWidget; auto* layout = new QVBoxLayout(root);
@@ -35,6 +36,20 @@ public:
         disconnect_ = new QPushButton("Disconnect"); refresh_ = new QPushButton("Refresh");
         auth->addWidget(token_, 1); auth->addWidget(connect_); auth->addWidget(demo_);
         auth->addWidget(disconnect_); auth->addWidget(refresh_); layout->addLayout(auth);
+        auto* identity = new QHBoxLayout;
+        identity->addWidget(new QLabel("Connection profile"));
+        profile_ = new QComboBox;
+        profile_->addItem("Default TLS", QString());
+        const auto defaults = nova::frontend_options();
+        if (discord::supports_browser_impersonation()) {
+            profile_->addItem("Chrome 152 (TLS + HTTP/2)", "chrome152");
+        }
+        if (!defaults.transport.browser_profile.empty() && profile_->findData(QString::fromStdString(defaults.transport.browser_profile)) < 0)
+            profile_->addItem(qtext(defaults.transport.browser_profile), QString::fromStdString(defaults.transport.browser_profile));
+        profile_->setCurrentIndex(std::max(0, profile_->findData(QString::fromStdString(defaults.transport.browser_profile))));
+        identity->addWidget(profile_);
+        auto* identity_note = new QLabel(discord::supports_browser_impersonation() ? "Certificate verification enabled" : "Browser profiles need NOVA_BROWSER_IDENTITY=ON");
+        identity->addWidget(identity_note); identity->addStretch(); layout->addLayout(identity);
         auto* split = new QSplitter;
         guilds_ = new QListWidget; guilds_->setMinimumWidth(160);
         channels_ = new QListWidget; channels_->setMinimumWidth(160);
@@ -65,7 +80,7 @@ public:
             QSplitter::handle { background: #151923; width: 8px; }
         )");
         QObject::connect(connect_, &QPushButton::clicked, this, [this] {
-            if (service_.connect(token_->text().toStdString())) token_->clear();
+            if (service_.connect(token_->text().toStdString(), profile_->currentData().toString().toStdString())) token_->clear();
         });
         QObject::connect(token_, &QLineEdit::returnPressed, connect_, &QPushButton::click);
         QObject::connect(demo_, &QPushButton::clicked, this, [this] { service_.demo(); token_->clear(); });
@@ -116,6 +131,7 @@ private:
         revision_ = s.revision;
         const bool idle = !s.busy;
         connect_->setEnabled(idle); demo_->setEnabled(idle); token_->setEnabled(idle);
+        profile_->setEnabled(idle && !s.connected);
         disconnect_->setEnabled(s.connected && idle); refresh_->setEnabled(s.connected && idle);
         guilds_->setEnabled(s.connected && idle); channels_->setEnabled(s.connected && idle);
         draft_->setEnabled(s.connected && !s.channel.empty() && idle); send_->setEnabled(draft_->isEnabled());
@@ -146,6 +162,7 @@ private:
     QString pending_draft_;
     QLabel *account_, *heading_, *status_;
     QLineEdit *token_, *draft_;
+    QComboBox* profile_;
     QPushButton *connect_, *demo_, *disconnect_, *refresh_, *send_;
     QListWidget *guilds_, *channels_;
     QTextBrowser* messages_;

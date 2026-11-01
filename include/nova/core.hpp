@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <deque>
 #include <functional>
+#include <filesystem>
 #include <mutex>
 #include <thread>
 
@@ -13,7 +14,7 @@ struct ChatMessage { std::string id, channel, author, content, timestamp; bool e
 struct State {
     std::uint64_t revision = 0;
     bool connected = false, demo = false, busy = false, live = false;
-    std::string user, guild, channel, status = "Connect with a token or explore Demo.", error;
+    std::string user, guild, channel, browser_profile, status = "Connect with a token or explore Demo.", error;
     std::vector<Entry> guilds, channels;
     std::vector<ChatMessage> messages;
 };
@@ -21,6 +22,8 @@ struct Options {
     discord::ClientOptions transport;
     bool gateway = true;
 };
+// Browser defaults and an adjacent trust bundle; process environment may override them.
+Options frontend_options();
 
 // Strip terminal controls from remote text before handing it to either renderer.
 std::string visible_text(std::string_view input);
@@ -35,7 +38,7 @@ public:
     Service(const Service&) = delete;
     Service& operator=(const Service&) = delete;
     State snapshot() const;
-    bool connect(std::string token);
+    bool connect(std::string token, std::optional<std::string> browser_profile = {});
     bool demo();
     bool disconnect();
     bool select_guild(std::string id);
@@ -50,7 +53,7 @@ private:
     void reset();
     void load_channels(const std::string& guild);
     void load_history(const std::string& channel);
-    void start_gateway(std::string token);
+    void start_gateway(std::string token, discord::ClientOptions transport);
     void stop_gateway();
     Options options_;
     mutable std::mutex state_mutex_, queue_mutex_;

@@ -161,9 +161,11 @@ else:
                         if path.is_file():
                             copy(path, licenses / formula / path.relative_to(opt))
     else:
-        for library in (root / "build/tools/curl/lib").glob("libcurl.so*"):
-            copy(library, stage / "lib" / library.name)
-        copy(root / "build/tools/curl-8.17.0/COPYING", licenses / "curl/COPYING")
+        browser_enabled = "NOVA_BROWSER_IDENTITY:BOOL=ON" in (build / "CMakeCache.txt").read_text()
+        if not browser_enabled:
+            for library in (root / "build/tools/curl/lib").glob("libcurl.so*"):
+                copy(library, stage / "lib" / library.name)
+            copy(root / "build/tools/curl-8.17.0/COPYING", licenses / "curl/COPYING")
     # Minimal environments catch accidentally omitted Windows DLLs / Linux custom curl.
     env = dict(os.environ)
     # Deployment tools include the native platform plugin; Linux system Qt also
