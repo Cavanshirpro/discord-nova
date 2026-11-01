@@ -106,6 +106,11 @@ else:
             source = Path(directory).parent / "share/licenses"
             if source.is_dir() and "msys" in str(source).lower():
                 shutil.copytree(source, licenses / "msys2-runtime", dirs_exist_ok=True)
+                # MSYS2 patches libcurl to resolve this path relative to its DLL.
+                # The portable archive must include the trust bundle as well as DLLs.
+                ca_bundle = Path(directory).parent / "etc/ssl/certs/ca-bundle.crt"
+                if ca_bundle.is_file():
+                    copy(ca_bundle, stage / "etc/ssl/certs/ca-bundle.crt")
                 break
         for source in build.glob("vcpkg_installed/*/share/*/copyright"):
             copy(source, licenses / "vcpkg" / source.parent.name / "copyright")

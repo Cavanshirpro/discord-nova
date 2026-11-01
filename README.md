@@ -61,7 +61,9 @@ sudo apt-get install libqt6widgets6 libqt6gui6 libqt6core6t64 libssl3t64 zlib1g
 
 macOS archives target macOS 15+, bundle Qt and Homebrew runtime libraries and are ad-hoc signed;
 they are not Apple-notarized. Windows archives include Qt plugins and required
-third-party DLLs. Release packages run a staged demo smoke test before upload.
+third-party DLLs. MSYS2 archives also include curl's CA certificate bundle in
+`etc/ssl/certs/`, preserving its relocated trust-store path. Release packages
+run a staged demo smoke test before upload.
 Use the matching architecture; these are desktop builds, not Android/iOS apps.
 
 For your account, launch either program, enter a token in its masked field and
