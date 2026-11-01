@@ -59,7 +59,7 @@ use system Qt/OpenSSL libraries. Install runtime dependencies first:
 sudo apt-get install libqt6widgets6 libqt6gui6 libqt6core6t64 libssl3t64 zlib1g
 ```
 
-macOS archives bundle Qt and Homebrew runtime libraries and are ad-hoc signed;
+macOS archives target macOS 15+, bundle Qt and Homebrew runtime libraries and are ad-hoc signed;
 they are not Apple-notarized. Windows archives include Qt plugins and required
 third-party DLLs. Release packages run a staged demo smoke test before upload.
 Use the matching architecture; these are desktop builds, not Android/iOS apps.

@@ -21,7 +21,7 @@ together. `source.zip` needs the dependencies and Internet access on first build
 
 Windows bundles third-party DLLs and Qt platform plugins. Linux packages target
 Ubuntu 24.04+ and require system Qt/OpenSSL/zlib (`libqt6widgets6 libqt6gui6
-libqt6core6t64 libssl3t64 zlib1g`). macOS bundles runtime libraries and uses ad-hoc
+libqt6core6t64 libssl3t64 zlib1g`). macOS 15+ bundles runtime libraries and uses ad-hoc
 signing, without Apple notarization. See the README for launch commands.
 
 ## Current scope

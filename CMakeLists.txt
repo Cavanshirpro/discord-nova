@@ -15,6 +15,11 @@ endif()
 include(FetchContent)
 include(GNUInstallDirs)
 find_package(Threads REQUIRED)
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("#include <thread>\n#include <stop_token>\nint main() { std::jthread worker([] {}); }" NOVA_HAS_JTHREAD)
+if(NOT NOVA_HAS_JTHREAD)
+    message(FATAL_ERROR "C++20 std::jthread/stop_token support is required. On macOS, select Xcode 26 or newer.")
+endif()
 
 set(DISCORD_SELF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(DISCORD_SELF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -28,6 +33,12 @@ else()
         GIT_REPOSITORY https://github.com/Cavanshirpro/discord.cpp-self.git
         GIT_TAG a8681265e0c6ee58017639070c891d06d9624d8e) # v0.2.1
     FetchContent_MakeAvailable(discord_self)
+endif()
+
+if(WIN32)
+    # Windows SDK macros otherwise expand std::min/max and numeric_limits::max
+    # inside discord.cpp-self when curl pulls in the native Windows headers.
+    target_compile_definitions(discord_cpp_self PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
 
 add_library(nova_core STATIC src/core.cpp)
@@ -85,4 +96,6 @@ if(NOVA_BUILD_TESTS)
     endif()
 endif()
 
-install(FILES README.md LICENSE COPYING NOTICE THIRD_PARTY.md CHANGELOG.md DESTINATION share/doc/discord-nova COMPONENT Runtime)
+install(FILES README.md LICENSE COPYING NOTICE THIRD_PARTY.md CHANGELOG.md ROADMAP.md
+    CONTRIBUTING.md SECURITY.md release.md VERSION DESTINATION share/doc/discord-nova COMPONENT Runtime)
+install(DIRECTORY docs/ DESTINATION share/doc/discord-nova/docs COMPONENT Runtime)

@@ -93,10 +93,13 @@ use Ubuntu 24.04 system Qt/OpenSSL; the custom curl is included in `lib/`.
 
 ## macOS
 
-Install Xcode Command Line Tools and [Homebrew](https://brew.sh/):
+Use macOS 15+, **Xcode 26 or newer** (its libc++ supports `std::jthread`) and
+[Homebrew](https://brew.sh/). Xcode 16's default libc++ does not enable that
+library feature. Select the newer toolchain before configuring:
 
 ```sh
 brew install cmake ninja qt curl nlohmann-json python dylibbundler
+export DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer
 export PATH="$(brew --prefix qt)/bin:$PATH"
 cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qt);$(brew --prefix curl);$(brew --prefix nlohmann-json)"
 sh scripts/build.sh --preset macos --jobs 4
@@ -107,7 +110,8 @@ python3 scripts/package.py --build-dir build/macos --platform macos-arm64
 
 Use `macos-x64` on Intel. `macdeployqt` deploys the app bundle; `dylibbundler`
 relocates terminal-client libraries. Packaging ad-hoc signs both after relocation.
-No developer certificate or notarization secret is needed.
+No developer certificate or notarization secret is needed. Adjust the Xcode app
+path to your installed version; CMake checks `std::jthread` at configuration.
 
 ## Select an interface / local library
 

@@ -15,6 +15,11 @@ library's Channel model; history and sends still use typed library methods.
 
 ## Observed integration behavior
 
+- The v0.2.1 library target needs `NOMINMAX` when built with MSVC: Windows SDK
+  macros otherwise expand `std::min/max` and `numeric_limits::max` in its curl
+  transport sources. Nova adds private compile definitions to that target,
+  without changing library source files. This should also be fixed in the
+  library's own Windows target configuration.
 - `Client::run()` resets its stop flag during startup. Nova repeats `close()`
   until the Gateway thread exits before joining, covering immediate disconnect.
   The offline integration test exercises this sequence. No library files changed.
@@ -25,7 +30,7 @@ library's Channel model; history and sends still use typed library methods.
 - Native media remains disabled in this release. Media work should be implemented
   against the library's media API in a future release.
 
-No blocking library defect was found in offline v0.1 tests. Real Discord login,
+The MSVC build configuration issue is handled in Nova's CMake integration. Real Discord login,
 account permissions, verification and media are not validated by these fixtures.
 Report new library failures to the maintainer with a minimal repro, dependency
 commit, platform and redacted diagnostics. Never include an account token.

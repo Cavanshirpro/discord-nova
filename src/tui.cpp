@@ -3,6 +3,7 @@
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/screen.hpp>
 #include <cstdlib>
 #include <algorithm>
 #include <iostream>
@@ -27,10 +28,10 @@ int main(int argc, char** argv) {
     if (smoke) {
         for (int i = 0; i < 200; ++i) {
             const auto s = service.snapshot();
-            if (!s.busy && s.demo && s.messages.size() == 3) { std::cout << "TUI demo core ready\n"; return 0; }
+            if (!s.busy && s.demo && s.messages.size() == 3) break;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        return 1;
+        if (service.snapshot().busy || service.snapshot().messages.size() != 3) return 1;
     }
     using namespace ftxui;
     auto screen = ScreenInteractive::Fullscreen();
@@ -105,9 +106,9 @@ int main(int argc, char** argv) {
         }
         auto title = hbox({text(" NOVA ") | bold | color(Color::Cyan), text("v" NOVA_VERSION), filler(),
                            text(nova::visible_text(state.user) + (state.demo ? "  DEMO " : state.live ? "  LIVE " : "  REST "))});
-        auto columns = hbox({vbox({text("SERVERS / DMs") | bold, separator(), guilds->Render() | vscroll_indicator | frame | flex}) | size(WIDTH, EQUAL, 23) | border,
-                             vbox({text("CHANNELS") | bold, separator(), channels->Render() | vscroll_indicator | frame | flex}) | size(WIDTH, EQUAL, 25) | border,
-                             vbox({text("CONVERSATION") | bold, separator(), history->Render() | vscroll_indicator | frame | flex}) | flex | border}) | flex;
+        auto columns = hbox({vbox({text("SERVERS / DMs") | bold, separator(), guilds->Render() | vscroll_indicator | yframe | flex}) | size(WIDTH, EQUAL, 23) | border,
+                             vbox({text("CHANNELS") | bold, separator(), channels->Render() | vscroll_indicator | yframe | flex}) | size(WIDTH, EQUAL, 25) | border,
+                             vbox({text("CONVERSATION") | bold, separator(), history->Render() | vscroll_indicator | yframe | flex}) | flex | border}) | flex;
         return vbox({title, auth->Render() | border, columns,
                      hbox({input->Render() | flex, send->Render()}) | border,
                      paragraph(nova::visible_text(state.error.empty() ? state.status : state.error)) | color(state.error.empty() ? Color::GrayLight : Color::RedLight),
@@ -119,6 +120,16 @@ int main(int argc, char** argv) {
         if (service.snapshot().busy && e != Event::Custom && (input->Focused() || send->Focused())) return true;
         return false;
     });
+    if (smoke) {
+        auto buffer = Screen::Create(Dimension::Fixed(120), Dimension::Fixed(30));
+        Render(buffer, renderer->Render());
+        const auto output = buffer.ToString();
+        if (output.find("NOVA") == std::string::npos || output.find("Direct Messages") == std::string::npos || output.find("Welcome to discord-nova") == std::string::npos) {
+            std::cerr << "TUI demo render failed\n" << output << '\n'; return 1;
+        }
+        std::cout << "TUI demo rendered at 120x30\n";
+        return 0;
+    }
     std::jthread ticker([&](std::stop_token stop) {
         while (!stop.stop_requested()) { std::this_thread::sleep_for(std::chrono::milliseconds(100)); screen.PostEvent(Event::Custom); }
     });
