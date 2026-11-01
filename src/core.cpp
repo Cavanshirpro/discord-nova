@@ -14,8 +14,8 @@ Options frontend_options() {
     if (discord::supports_browser_impersonation()) result.transport.browser_profile = "chrome152";
     if (const char* profile = std::getenv("NOVA_BROWSER_PROFILE"))
         result.transport.browser_profile = std::string_view(profile) == "default" ? "" : profile;
-    if (const char* bundle = std::getenv("NOVA_CA_BUNDLE")) {
-        result.transport.ca_bundle = bundle;
+    if (const char* bundle_env = std::getenv("NOVA_CA_BUNDLE")) {
+        result.transport.ca_bundle = bundle_env;
     } else {
         std::filesystem::path executable;
 #ifdef _WIN32
