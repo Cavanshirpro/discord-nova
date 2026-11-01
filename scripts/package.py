@@ -115,7 +115,10 @@ else:
     elif sys.platform == "darwin":
         app = stage / "discord-nova-gui.app"
         if app.exists():
-            run("macdeployqt", app, "-always-overwrite")
+            deployment = subprocess.run(["macdeployqt", str(app), "-always-overwrite"], check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            print(deployment.stdout)
+            if "ERROR:" in deployment.stdout:
+                raise SystemExit("Qt deployment reported unresolved dependencies")
         tui = stage / "bin/discord-nova-tui"
         if tui.exists():
             run("dylibbundler", "-b", "-x", tui, "-d", stage / "lib", "-p", "@executable_path/../lib/", "-cd", "-of")
@@ -139,7 +142,7 @@ else:
                     if dependency.startswith("/") and not dependency.startswith(("/System/Library/", "/usr/lib/")):
                         raise SystemExit(f"Non-relocatable macOS dependency: {binary.name}: {dependency}")
         brew = Path(subprocess.check_output(["brew", "--prefix"], text=True).strip())
-        formulas = {"qt", "curl"} | set(subprocess.check_output(["brew", "deps", "--formula", "qt", "curl"], text=True).splitlines())
+        formulas = {"qtbase", "curl"} | set(subprocess.check_output(["brew", "deps", "--formula", "qtbase", "curl"], text=True).splitlines())
         for formula in sorted(formulas):
             opt = brew / "opt" / formula
             if opt.is_dir():

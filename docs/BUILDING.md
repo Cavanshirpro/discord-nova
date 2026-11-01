@@ -98,10 +98,10 @@ Use macOS 15+, **Xcode 26 or newer** (its libc++ supports `std::jthread`) and
 library feature. Select the newer toolchain before configuring:
 
 ```sh
-brew install cmake ninja qt curl nlohmann-json python dylibbundler
+brew install cmake ninja qtbase curl nlohmann-json python dylibbundler
 export DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer
-export PATH="$(brew --prefix qt)/bin:$PATH"
-cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qt);$(brew --prefix curl);$(brew --prefix nlohmann-json)"
+export PATH="$(brew --prefix qtbase)/bin:$PATH"
+cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase);$(brew --prefix curl);$(brew --prefix nlohmann-json)"
 sh scripts/build.sh --preset macos --jobs 4
 open build/macos/discord-nova-gui.app --args --demo
 ./build/macos/discord-nova-tui --demo

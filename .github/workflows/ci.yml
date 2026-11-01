@@ -48,14 +48,14 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           echo "DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer" >> "$GITHUB_ENV"
-          brew install qt curl nlohmann-json ninja dylibbundler
-          echo "$(brew --prefix qt)/bin" >> "$GITHUB_PATH"
+          brew install qtbase curl nlohmann-json ninja dylibbundler
+          echo "$(brew --prefix qtbase)/bin" >> "$GITHUB_PATH"
       - name: Configure Linux
         if: runner.os == 'Linux'
         run: cmake --preset linux -DCMAKE_PREFIX_PATH="$PWD/build/tools/curl" '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib'
       - name: Configure macOS
         if: runner.os == 'macOS'
-        run: cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qt);$(brew --prefix curl);$(brew --prefix nlohmann-json)"
+        run: cmake --preset macos -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase);$(brew --prefix curl);$(brew --prefix nlohmann-json)"
       - name: Build, test and package
         env:
           PLATFORM: ${{ matrix.platform }}
