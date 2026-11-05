@@ -11,3 +11,8 @@ test_token*
 *.user
 __pycache__/
 *.pyc
+/config.json
+/drafts.json
+/recordings/
+/cache/
+/logs/

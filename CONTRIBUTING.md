@@ -1,8 +1,10 @@
 # Contributing
 
-Open an issue for larger changes so we can agree on scope. Keep shared behavior
-in `nova_core`, frontend concerns in their GUI/TUI files and Discord transport
-in discord.cpp-self. Do not introduce a second Discord networking library.
+Open an issue for larger changes so we can agree on scope. Keep shared connection
+configuration in `nova_core`, GUI code in `src/gui.cpp`, the original terminal
+model/backend/renderer in `src/tui/`, and Discord transport in discord.cpp-self.
+Preserve the original TUI layout and behavior when changing its platform adapter.
+Do not introduce a second Discord networking library.
 
 Build the enabled interfaces and run `ctest --test-dir build/<preset>
 --output-on-failure`. New protocol behavior needs a local fixture; never make CI

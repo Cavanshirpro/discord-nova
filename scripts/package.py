@@ -91,8 +91,9 @@ else:
     browser_enabled = "NOVA_BROWSER_IDENTITY:BOOL=ON" in cache
     run("cmake", "--install", build, "--prefix", stage, "--component", "Runtime", "--config", "Release")
     licenses = stage / "share/licenses"
-    for dep in ("discord_self", "ftxui"):
-        source = build / "_deps" / (dep + "-src")
+    for dep in ("discord_self",):
+        local_source = re.search(r"^NOVA_DISCORD_SOURCE:PATH=(.+)$", cache, re.M)
+        source = Path(local_source[1]) if local_source else build / "_deps" / (dep + "-src")
         for filename in ("LICENSE", "COPYING", "NOTICE"):
             copy(source / filename, licenses / dep / filename)
     if sys.platform == "win32":

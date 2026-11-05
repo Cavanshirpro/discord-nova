@@ -2,7 +2,7 @@ param(
     [ValidateSet('mingw64', 'ucrt64', 'clang64', 'msvc', 'default')][string]$Toolchain = 'mingw64',
     [string]$MsysRoot = 'C:\msys64',
     [int]$Jobs = 4,
-    [switch]$TuiOnly, [switch]$GuiOnly, [switch]$SkipTests, [switch]$Package, [switch]$SystemCurl,
+    [switch]$TuiOnly, [switch]$GuiOnly, [switch]$SkipTests, [switch]$Package, [switch]$SystemCurl, [switch]$NativeMedia,
     [string[]]$CMakeArgs = @()
 )
 $ErrorActionPreference = 'Stop'
@@ -29,6 +29,7 @@ try {
     $taskConfigure += "-DNOVA_BUILD_TUI=$(@{ $true = 'OFF'; $false = 'ON' }[[bool]$GuiOnly])"
     $taskConfigure += "-DNOVA_BUILD_TESTS=$(@{ $true = 'OFF'; $false = 'ON' }[[bool]$SkipTests])"
     $taskConfigure += "-DNOVA_BROWSER_IDENTITY=$(@{ $true = 'OFF'; $false = 'ON' }[[bool]$SystemCurl])"
+    $taskConfigure += "-DNOVA_NATIVE_MEDIA=$(@{ $true = 'ON'; $false = 'OFF' }[[bool]$NativeMedia])"
     & cmake @taskConfigure @CMakeArgs
     if ($LASTEXITCODE -ne 0) { throw 'Configure failed' }
     & cmake --build "build/$Toolchain" --parallel $Jobs

@@ -134,6 +134,9 @@ ctest --preset default
 
 PowerShell equivalents: `-TuiOnly`, `-GuiOnly`, `-SkipTests`, `-Jobs 4`, `-Package`.
 Use `-SystemCurl` to disable browser profiles in the PowerShell/CMD wrapper.
+Use `-NativeMedia` / `--native-media` with prepared libdave/MLSPP/OpenSSL/Opus
+dependencies to enable the original TUI's voice/video backend. Pass the dependency
+prefix through CMake; see [TUI media builds](TUI.md). The default is OFF.
 A TUI-only build does not require Qt. Both interfaces still use discord.cpp-self.
 The Qt GUI theme lives in `styles/nova.qss` and is embedded by `qt_add_resources`.
 Edit QSS and rebuild the GUI to change the style; binary packages need no separate
@@ -153,6 +156,8 @@ Published releases must document the precise dependency commit.
 
 `ctest` runs core tests, local REST/Gateway integration tests and demo startup
 checks for enabled frontends. Nothing logs into a real account.
+The original TUI adds editor/model/layout tests and backend HTTP/HTTPS fixtures;
+POSIX builds also exercise an actual PTY, UTF-8 paste and terminal restoration.
 Browser builds also check Chrome ClientHello, HTTP/2 settings, connection reuse,
 HTTPS/WSS integration and rejection of untrusted certificates/wrong hostnames.
 `package.py` installs the Runtime component into a fresh staging directory, deploys runtimes,

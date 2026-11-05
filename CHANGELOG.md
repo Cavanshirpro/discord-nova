@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Adopt the original Nova TUI from discord.cpp-mytesting: preserve its server rail,
+  editor, replies/edits/reactions, friends, drafts and voice/media controls.
+- Add POSIX terminal key/UTF-8/mouse/paste decoding and local backend fixtures.
+- Add native-media source-build support and Windows launchers for the original TUI.
+
 - Embed a separate Qt QSS theme with profile selector, focus, hover and disabled states.
 
 - Chrome 152 TLS/HTTP browser profile in both frontends, backed by a pinned

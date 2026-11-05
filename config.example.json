@@ -1,0 +1,16 @@
+{
+  "guild_id": "0",
+  "channel_id": "0",
+  "auto_join_voice": false,
+  "camera": false,
+  "go_live": false,
+  "receive_audio": true,
+  "receive_video": true,
+  "play_received_audio": false,
+  "muted": false,
+  "voice_audio": true,
+  "stream_audio": false,
+  "ffmpeg": "ffmpeg",
+  "video_source": "",
+  "audio_source": ""
+}

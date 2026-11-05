@@ -33,8 +33,9 @@ library's Channel model; history and sends still use typed library methods.
   [Browser identity](BROWSER_IDENTITY.md) for behavior and offline test coverage.
 - HTTP calls are synchronous. They run outside the UI thread. Shutdown waits for
   an in-flight REST call to finish or time out; UI actions do not cancel a send.
-- Native media remains disabled in this release. Media work should be implemented
-  against the library's media API in a future release.
+- Published v0.1.0 packages disable native media. Development imports the original
+  TUI's MediaSession integration; `NOVA_NATIVE_MEDIA=ON` enables it with prepared
+  dependencies. The default portable CI packages remain text clients.
 
 The MSVC build configuration issue is handled in Nova's CMake integration. Real Discord login,
 account permissions, verification and media are not validated by these fixtures.

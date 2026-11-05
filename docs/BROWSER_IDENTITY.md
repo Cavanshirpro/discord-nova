@@ -1,9 +1,9 @@
 # Browser and TLS identity
 
-Development builds now offer **Chrome 152** and **Default TLS** connection
-profiles in the GUI and TUI. Chrome is selected by default when the build has
-browser support. Choose the profile before connecting; an active session keeps
-its selected profile. Demo mode makes no network connection.
+Development builds offer **Chrome 152** and **Default TLS** profiles. The GUI has
+a selector; the original TUI uses command-line/environment options. Chrome is
+selected by default when the build has browser support. Choose the profile before
+connecting; an active session keeps it. Demo mode makes no network connection.
 
 This uses [curl-impersonate v2.3.2](https://github.com/lexiforest/curl-impersonate/releases/tag/v2.3.2),
 not just a User-Agent string. The provider configures TLS ClientHello, browser
@@ -35,9 +35,9 @@ sh scripts/build.sh
 ./build/linux/discord-nova-tui --browser-profile chrome152
 ```
 
-The GUI has a **Connection profile** selector. The TUI has a **Next connection**
-selector; its header reports the profile of the connected session. Advanced
-process environment overrides are available for both frontends:
+The GUI has a **Connection profile** selector. The original TUI accepts
+`--browser-profile chrome152|default` and `--ca-bundle ROOTS.pem` alongside its
+configuration and token-file paths. Environment overrides apply to both:
 
 - `NOVA_BROWSER_PROFILE=chrome152` selects a provider profile. `default` disables
   impersonation. Other target names must exist in this pinned provider release.

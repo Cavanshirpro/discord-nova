@@ -1,7 +1,8 @@
 # Roadmap
 
 The long-term target is a complete native C++ Discord client. GUI and TUI remain
-equal entry points into the same core; networking belongs in discord.cpp-self.
+entry points into discord.cpp-self. Development adopts the original, richer TUI;
+the Qt GUI currently has a smaller feature set.
 
 ## v0.1.0 — First text client
 
@@ -12,16 +13,17 @@ equal entry points into the same core; networking belongs in discord.cpp-self.
 
 ## Next text-client milestones
 
-- Start DMs, replies, client-side edits/deletes, reactions and attachments.
-- Older-message pagination, search, unread state and notifications.
+- Bring the original TUI's replies, edits/deletes, reactions, new DMs, friends,
+  pagination and local search to the GUI through a shared backend.
+- Attachment upload, synchronized unread state and notifications.
 - Rich text, links, emoji, avatars, accessibility and responsive terminal layouts.
 - Better session recovery and optional OS keychain storage.
 - Expand typed library coverage where the client needs it.
 
 ## Media
 
-- Voice channels, microphone/device controls and mute/deafen.
-- Video, screen sharing, media receive/playback through discord.cpp-self.
+- Validate and package the original TUI's native-media backend on more toolchains.
+- Extend its voice, video, screen sharing and recording flows to the GUI.
 - Permission handling, device testing and platform-specific media packaging.
 
 ## Plugins (after the core is established)

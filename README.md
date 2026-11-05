@@ -19,20 +19,26 @@ It is an early foundation; full Discord feature parity is still ahead.
 
 Development builds additionally support [Chrome browser/TLS identity](docs/BROWSER_IDENTITY.md).
 Published v0.1.0 binaries predate that feature.
+Development now uses the original Nova TUI from `discord.cpp-mytesting/discord-nova`,
+including its layout, editor, friends and media controls. See the [TUI guide](docs/TUI.md).
 
 ## What works
 
-- Qt Widgets desktop GUI and FTXUI keyboard/mouse terminal interface.
+- Qt Widgets desktop GUI with an embedded QSS theme and the original C++ terminal UI.
 - Account login, server lists, text channels and existing direct/group messages.
 - Latest 100 messages, manual refresh, text sending with mentions disabled.
 - Live Gateway message creation, edits and deletions, reconnect/resume via the library.
 - Background REST work, bounded message history and clean session shutdown.
 - Offline demo mode: explore either interface without an account.
+- TUI: replies, own-message edits/deletion, reactions, profiles, new DMs,
+  older-message pagination, friends, local search and persistent drafts.
+- TUI: original voice/media/recording controls with `NOVA_NATIVE_MEDIA=ON` builds.
 - Windows, Linux and macOS builds; x64 and selected ARM64 binaries.
 
-Tokens and messages stay in process memory. No account token, message history,
-analytics or configuration is saved to disk. A failed send keeps the draft.
-Connect explicitly; setting `DISCORD_TOKEN` only prefills the masked token field.
+The GUI keeps its session and drafts in memory. The original TUI reads a local
+token file and persists drafts/settings beside its configuration; these files
+are ignored by Git. The optional event log contains operation and error codes,
+not message text or tokens. A failed send preserves the draft. See [local data](docs/TUI.md).
 
 ## Try it
 
@@ -69,14 +75,18 @@ third-party DLLs. MSYS2 archives also include curl's CA certificate bundle in
 run a staged demo smoke test before upload.
 Use the matching architecture; these are desktop builds, not Android/iOS apps.
 
-For your account, launch either program, enter a token in its masked field and
-choose **Connect**. Do not paste tokens into issues, screenshots or command-line
-arguments. You can also prefill with the `DISCORD_TOKEN` process environment
-variable. Discord's unofficial user API can change and can require verification;
+For your account, the GUI provides a masked token field and **Connect** button;
+`DISCORD_TOKEN` can prefill that field. The development TUI uses
+`discord-nova-tui CONFIG TOKEN_FILE [EVENT_LOG]`, or `start-tui.cmd` on Windows.
+Copy `config.example.json` to `config.json` and keep the token in the local
+`test_token` file. Voice requires a native-media build and explicit channel selection.
+Do not paste tokens into issues, screenshots or command-line arguments.
+Discord's unofficial user API can change and can require verification;
 the client does not bypass those challenges. This project is not affiliated with Discord.
 
 In the TUI use **Tab / Shift+Tab** to move focus, **arrows** to select/scroll,
-**Enter** to open a server/channel or send, and **Ctrl+Q** to quit. Use a modern
+**Enter** to compose/send, **Ctrl+K** for commands, **F1** for help, **F4** for media,
+**F6** for friends and **Ctrl+Q** to quit. Use a modern
 UTF-8 terminal, preferably at least 100×28 cells. PowerShell, CMD and Git Bash
 are shells: the same Windows binaries run from each; no separate binary is
 needed for each terminal emulator.
@@ -84,8 +94,8 @@ needed for each terminal emulator.
 ## Build from source
 
 Requirements: C++20, CMake 3.25+, Ninja, Python 3.12+ for tooling, Qt 6.4+
-(GUI), curl 7.86+ with **ws/wss**, nlohmann/json 3.11+ and zlib. FTXUI and
-discord.cpp-self are downloaded at pinned commits by CMake. Initial configuration
+(GUI), curl 7.86+ with **ws/wss**, nlohmann/json 3.11+ and zlib.
+discord.cpp-self is downloaded at a pinned commit by CMake. Initial configuration
 needs Git and network access. Dependency versions are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ```sh
