@@ -15,6 +15,11 @@ if not defined taskNovaExe (
   echo Build Nova first. See docs\BUILDING.md.
   exit /b 1
 )
+if "%~1"=="--smoke-test" (
+  "%taskNovaExe%" --demo --smoke-test
+  if errorlevel 1 exit /b 1
+  exit /b 0
+)
 if "%~1"=="--demo" (
   start "NOVA - Offline Demo" "%taskNovaExe%" --demo
   exit /b 0

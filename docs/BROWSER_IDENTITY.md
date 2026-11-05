@@ -12,6 +12,10 @@ discord.cpp-self; there is no second Discord transport. REST keeps the profile's
 HTTP/2 negotiation, and the Gateway uses the provider's WebSocket profile with
 HTTP/1.1 Upgrade.
 
+Native-media builds pass the same connection options through
+`MediaOptions::transport` to the independent media Gateway and voice/stream
+WebSockets, including the selected browser profile and verified CA bundle.
+
 This is protocol emulation, not a running browser: there is no JavaScript engine,
 browser cookie import or generated Discord build/device identity. It does not
 guarantee identical behavior in every browser scenario. Certificate verification,

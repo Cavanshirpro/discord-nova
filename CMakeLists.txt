@@ -43,7 +43,7 @@ if(NOVA_DISCORD_SOURCE)
 else()
     FetchContent_Declare(discord_self
         GIT_REPOSITORY https://github.com/Cavanshirpro/discord.cpp-self.git
-        GIT_TAG 2e5659faf5231aa00d16850e64b35aaa9ec5d8c3) # v0.2.2 + browser identity API
+        GIT_TAG 0d37a2ebe160601a9d2e219004bcbe4b39b94c7f) # v0.2.2 + browser/media transport options
     FetchContent_MakeAvailable(discord_self)
 endif()
 
@@ -139,6 +139,23 @@ if(NOVA_BUILD_TESTS)
         set_tests_properties(gui_demo PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 20)
     endif()
     if(NOVA_BUILD_TUI)
+        if(NOVA_NATIVE_MEDIA)
+            find_package(OpenSSL 3 REQUIRED)
+            get_target_property(_nova_discord_dir discord_cpp_self SOURCE_DIR)
+            add_executable(nova_media_transport_probe tests/media_transport_probe.cpp)
+            target_include_directories(nova_media_transport_probe PRIVATE
+                "${_nova_discord_dir}/src" "${DISCORD_SELF_DAVE_INCLUDE_DIR}" "${DISCORD_SELF_OPUS_INCLUDE_DIR}")
+            set_property(TARGET nova_media_transport_probe PROPERTY NO_SYSTEM_FROM_IMPORTED TRUE)
+            target_include_directories(nova_media_transport_probe BEFORE PRIVATE
+                $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>)
+            target_link_libraries(nova_media_transport_probe PRIVATE nova_core CURL::libcurl OpenSSL::Crypto)
+            if(NOVA_BROWSER_IDENTITY)
+                nova_browser_runtime(nova_media_transport_probe)
+            endif()
+            add_test(NAME media_transport_tls COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/media_transport_tls.py $<TARGET_FILE:nova_media_transport_probe> ${NOVA_BROWSER_IDENTITY})
+            set_tests_properties(media_transport_tls PROPERTIES TIMEOUT 25)
+        endif()
         add_executable(nova_terminal_input_tests tests/terminal_input.cpp)
         target_include_directories(nova_terminal_input_tests PRIVATE src/tui)
         add_test(NAME terminal_input COMMAND nova_terminal_input_tests)

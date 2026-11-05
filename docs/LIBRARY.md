@@ -1,8 +1,8 @@
 # discord.cpp-self integration
 
 Development pins discord.cpp-self commit
-`2e5659faf5231aa00d16850e64b35aaa9ec5d8c3` (v0.2.2 plus the optional
-browser identity API). Published Nova v0.1.0 pins v0.2.1 at
+`0d37a2ebe160601a9d2e219004bcbe4b39b94c7f` (v0.2.2 plus browser identity
+and media transport options). Published Nova v0.1.0 pins v0.2.1 at
 `a8681265e0c6ee58017639070c891d06d9624d8e`. CMake links `discord::self`.
 No library fork or replacement network implementation is included in Nova.
 
@@ -31,6 +31,10 @@ library's Channel model; history and sends still use typed library methods.
 - The library now exposes `browser_profile`, `ca_bundle` and capability detection.
   Nova passes the same selected transport options to REST and Gateway. See
   [Browser identity](BROWSER_IDENTITY.md) for behavior and offline test coverage.
+- The imported media backend revealed that independent media connections lost
+  these settings. The pinned library adds `MediaOptions::transport` and applies
+  profile/trust settings to its Gateway and voice/stream WebSockets. A local WSS
+  echo fixture verifies the voice transport and rejects bad trust/hostnames.
 - HTTP calls are synchronous. They run outside the UI thread. Shutdown waits for
   an in-flight REST call to finish or time out; UI actions do not cancel a send.
 - Published v0.1.0 packages disable native media. Development imports the original

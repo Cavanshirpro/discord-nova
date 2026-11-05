@@ -77,6 +77,7 @@ struct Backend::Impl {
        const discord::ClientOptions &options)
       : api(options), live(options), token(std::move(value)),
         recordings(std::move(root)) {
+    media_options.transport = options;
     media_options.guild_id = config.at("guild_id").get<discord::Snowflake>();
     media_options.channel_id =
         config.at("channel_id").get<discord::Snowflake>();

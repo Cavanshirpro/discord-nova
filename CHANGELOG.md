@@ -6,6 +6,7 @@
   editor, replies/edits/reactions, friends, drafts and voice/media controls.
 - Add POSIX terminal key/UTF-8/mouse/paste decoding and local backend fixtures.
 - Add native-media source-build support and Windows launchers for the original TUI.
+- Preserve browser/CA settings across the independent media Gateway and voice/stream WebSockets.
 
 - Embed a separate Qt QSS theme with profile selector, focus, hover and disabled states.
 
