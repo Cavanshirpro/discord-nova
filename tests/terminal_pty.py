@@ -79,7 +79,14 @@ try:
     while select.select([master], [], [], 0.05)[0]:
         output.extend(os.read(master, 65536))
     after = termios.tcgetattr(slave)
-    assert after == before, f'Terminal settings were not restored: {before!r} -> {after!r}'
+    restored, expected = list(after), list(before)
+    if sys.platform == 'darwin':
+        # XNU adds PENDIN when ICANON is restored. It is pending-input state,
+        # not a changed setting; compare every other flag, speed and cc byte.
+        # https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/tty.c
+        restored[3] &= ~termios.PENDIN
+        expected[3] &= ~termios.PENDIN
+    assert restored == expected, f'Terminal settings were not restored: {before!r} -> {after!r}'
     assert b'\x1b[?2004l' in output, 'Bracketed paste mode was not restored'
     os.write(control_write, b'Q')
     assert process.wait(timeout=3) == 0
