@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fix server/channel loading with compressed REST responses in browser profiles.
+- Show channel history permission failures separately from connection failures.
+- Cache wrapped chat lines, redraw only on changes, and avoid duplicate SDK history.
+- Bound offscreen event bookkeeping and publish validated Windows TUI bundles
+  through a latest-version launcher pointer.
+- Keep older history pages at the 500-message limit, evict least recently used
+  channel histories, and refresh bootstrap reads after Gateway readiness/resume.
+
 - Adopt the original Nova TUI from discord.cpp-mytesting: preserve its server rail,
   editor, replies/edits/reactions, friends, drafts and voice/media controls.
 - Add POSIX terminal key/UTF-8/mouse/paste decoding and local backend fixtures.

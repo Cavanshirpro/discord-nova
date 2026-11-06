@@ -37,6 +37,9 @@ try {
     if (!$SkipTests) {
         & ctest --test-dir "build/$Toolchain" --output-on-failure
         if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+        if (!$GuiOnly) {
+            & "$PSScriptRoot/publish-tui.ps1" -BuildDirectory "$taskRoot/build/$Toolchain"
+        }
     }
     if ($Package) {
         & python scripts/package.py --build-dir "build/$Toolchain" --platform "windows-x64-$Toolchain"

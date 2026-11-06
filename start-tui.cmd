@@ -1,7 +1,12 @@
 @echo off
 setlocal
 set "taskNovaExe="
-if exist "%~dp0bin\discord-nova-tui.exe" set "taskNovaExe=%~dp0bin\discord-nova-tui.exe"
+set "taskNovaRuntime="
+if exist "%~dp0build\tui-current-native.cmd" call "%~dp0build\tui-current-native.cmd"
+if not defined taskNovaExe if exist "%~dp0build\tui-current.cmd" call "%~dp0build\tui-current.cmd"
+if defined taskNovaRuntime set "PATH=%taskNovaRuntime%;%PATH%"
+if defined taskNovaExe if not exist "%taskNovaExe%" set "taskNovaExe="
+if not defined taskNovaExe if exist "%~dp0bin\discord-nova-tui.exe" set "taskNovaExe=%~dp0bin\discord-nova-tui.exe"
 for %%B in (adopted-native-mingw64 mingw64 ucrt64 clang64 msvc default) do (
   if not defined taskNovaExe if exist "%~dp0build\%%B\discord-nova-tui.exe" (
     set "taskNovaExe=%~dp0build\%%B\discord-nova-tui.exe"

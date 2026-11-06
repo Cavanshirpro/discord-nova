@@ -540,8 +540,7 @@ int execute(std::vector<std::filesystem::path> args) {
       script = Json::parse(file);
       script_write = std::filesystem::last_write_time(args[4]);
     }
-    auto start = std::chrono::steady_clock::now(),
-         last_draw = start - std::chrono::seconds(1);
+    auto start = std::chrono::steady_clock::now();
     auto last_size = terminal.size();
     while (!app.quitting() && !interrupted) {
       if (backend)
@@ -550,6 +549,8 @@ int execute(std::vector<std::filesystem::path> args) {
           if (log && str(e, "type") != "media" && str(e, "type") != "message" &&
               str(e, "type") != "typing" && str(e, "type") != "presence")
             log << Json{{"event", str(e, "type")},
+                        {"time_unix_ms", std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch()).count()},
                         {"operation", str(e, "operation")},
                         {"http_status", e.value("status", 0)},
                         {"discord_code", e.value("code", 0)},
@@ -590,14 +591,11 @@ int execute(std::vector<std::filesystem::path> args) {
       auto size = terminal.size();
       bool resized = size != last_size;
       bool dirty = app.take_dirty();
-      if (dirty || resized ||
-          std::chrono::steady_clock::now() - last_draw >
-              std::chrono::seconds(2)) {
+      if (dirty || resized) {
         std::cout << app.render(size.first, size.second) << std::flush;
-        last_draw = std::chrono::steady_clock::now();
         last_size = size;
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      std::this_thread::sleep_for(std::chrono::milliseconds(dirty || resized ? 20 : 50));
     }
     app.apply({{"type", "notice"},
                {"message", "Bağlantılar kapatılıyor; taslaklar korunuyor…"}});

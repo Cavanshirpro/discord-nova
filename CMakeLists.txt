@@ -43,7 +43,7 @@ if(NOVA_DISCORD_SOURCE)
 else()
     FetchContent_Declare(discord_self
         GIT_REPOSITORY https://github.com/Cavanshirpro/discord.cpp-self.git
-        GIT_TAG 0d37a2ebe160601a9d2e219004bcbe4b39b94c7f) # v0.2.2 + browser/media transport options
+        GIT_TAG 914662b2c74440bb0c0bdc9355e9ba41e57d024b) # v0.2.2 + browser/media transport and decompression fix
     FetchContent_MakeAvailable(discord_self)
 endif()
 

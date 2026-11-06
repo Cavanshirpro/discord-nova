@@ -73,3 +73,23 @@ not tokens or message text. The GUI continues to keep its own drafts in memory.
 Tests cover the imported editor/model/layout, real backend jobs against local
 HTTP/HTTPS fixtures, fragmented terminal input and POSIX PTY restoration. They
 use fake tokens and never log into Discord.
+
+## Latest validated Windows build
+
+The PowerShell build wrapper runs tests before promoting a TUI. Promotion copies
+the executable, adjacent DLLs and CA bundle into an immutable directory under
+`build/live-tui`, then replaces `build/tui-current.cmd`. Native-media builds also
+update `build/tui-current-native.cmd`; the launcher prefers this full build.
+An open session can keep using its current files while the next build finishes.
+`-SkipTests` does not promote an unverified version. To promote a custom build
+after running its full CTest suite, run:
+
+```powershell
+./scripts/publish-tui.ps1 -BuildDirectory ./build/adopted-native-mingw64
+```
+
+The UI owns up to 12 channel histories with 500 messages each; the SDK's duplicate
+message cache is disabled. Wrapped chat lines are reused until messages, channel,
+search or width changes. Idle loops check input at most every 50 ms and do not
+redraw unchanged frames. A channel history error remains visible until a successful
+refresh; HTTP 403 means the account cannot read that channel's history.

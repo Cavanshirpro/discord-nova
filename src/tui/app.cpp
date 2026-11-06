@@ -230,6 +230,8 @@ void App::choose_channel(const Json &channel) {
     return;
   }
   text_channel_ = str(channel, "id");
+  if (messages_.contains(text_channel_))
+    history_use_[text_channel_] = ++history_clock_;
   view_ = View::Chat;
   scroll_ = 0;
   selected_message_.clear();
@@ -242,32 +244,40 @@ void App::choose_channel(const Json &channel) {
 }
 void App::merge(const Json &message, bool incoming) {
   auto channel = str(message, "channel_id"), id = str(message, "id");
-  if (channel.empty() || id.empty() || deleted_[channel].contains(id))
+  if (channel.empty() || id.empty() ||
+      (deleted_.contains(channel) && deleted_.at(channel).contains(id)))
     return;
   if (incoming && channel != text_channel_) {
-    ++unread_[channel];
+    if (unread_.contains(channel) || unread_.size() < 4096)
+      unread_[channel] = std::min(9999, unread_[channel] + 1);
     if (!messages_.contains(channel))
       return;
   }
   auto &list = messages_[channel];
   if (!list.is_array())
     list = Json::array();
-  auto found = std::find_if(list.begin(), list.end(),
-                            [&](const Json &m) { return str(m, "id") == id; });
-  if (found == list.end())
-    list.push_back(message);
+  auto found = std::lower_bound(list.begin(), list.end(), message, id_less);
+  if (found == list.end() || str(*found, "id") != id)
+    list.insert(found, message);
   else
     found->update(message);
-  std::sort(list.begin(), list.end(), id_less);
+  history_use_[channel] = ++history_clock_;
   while (list.size() > 500)
     list.erase(list.begin());
   if (messages_.size() > 12) {
+    auto oldest = messages_.end();
     for (auto it = messages_.begin(); it != messages_.end(); ++it)
-      if (it->first != text_channel_ && it->first != channel) {
-        messages_.erase(it);
-        break;
-      }
+      if (it->first != text_channel_ && it->first != channel &&
+          (oldest == messages_.end() ||
+           history_use_.at(it->first) < history_use_.at(oldest->first)))
+        oldest = it;
+    if (oldest != messages_.end()) {
+      deleted_.erase(oldest->first);
+      history_use_.erase(oldest->first);
+      messages_.erase(oldest);
+    }
   }
+  ++message_revision_;
   dirty_ = true;
 }
 void App::apply(const Json &e) {
@@ -320,6 +330,21 @@ void App::apply(const Json &e) {
     }
   } else if (type == "history") {
     auto channel = str(e, "channel");
+    history_errors_.erase(channel);
+    if (e.value("older", false) && messages_.contains(channel)) {
+      auto &list = messages_.at(channel);
+      size_t additions = 0;
+      for (const auto &m : e["items"])
+        if (std::none_of(list.begin(), list.end(), [&](const Json &known) {
+              return str(known, "id") == str(m, "id");
+            }))
+          ++additions;
+      // Make room at the newer end when paging backwards. Dropping the oldest
+      // rows here would silently discard the page the user just requested.
+      while (!list.empty() && list.size() + additions > 500)
+        list.erase(std::prev(list.end()));
+      ++message_revision_;
+    }
     for (const auto &m : e["items"])
       merge(m);
     if (e["items"].empty())
@@ -327,6 +352,7 @@ void App::apply(const Json &e) {
   } else if (type == "message")
     merge(e["data"], true);
   else if (type == "message_edit") {
+    ++message_revision_;
     auto channel = str(e, "channel"), id = str(e, "id");
     auto found = messages_.find(channel);
     if (found != messages_.end())
@@ -337,6 +363,9 @@ void App::apply(const Json &e) {
         }
   } else if (type == "message_delete") {
     auto channel = str(e, "channel"), id = str(e, "id");
+    if (!messages_.contains(channel) && channel != text_channel_)
+      return;
+    ++message_revision_;
     deleted_[channel].insert(id);
     if (deleted_[channel].size() > 500)
       deleted_[channel].erase(deleted_[channel].begin());
@@ -365,8 +394,9 @@ void App::apply(const Json &e) {
         str(e["data"], "user_id") != str(me_, "id"))
       typing_[str(e["data"], "user_id")] = Clock::now();
   } else if (type == "presence") {
-    presence_[str(e["data"].value("user", Json::object()), "id")] =
-        str(e["data"], "status");
+    auto id = str(e["data"].value("user", Json::object()), "id");
+    if (!id.empty() && (presence_.contains(id) || presence_.size() < 4096))
+      presence_[id] = str(e["data"], "status");
   } else if (type == "dm_open") {
     auto c = e["data"];
     if (std::none_of(dms_.begin(), dms_.end(), [&](const Json &o) {
@@ -388,6 +418,20 @@ void App::apply(const Json &e) {
   else if (type == "error") {
     if (e.value("writes_blocked", false))
       writes_blocked_ = true;
+    auto operation = str(e, "operation");
+    if (operation.starts_with("history:")) {
+      auto channel = operation.substr(8);
+      auto message =
+          e.value("status", 0) == 403
+              ? "Bu kanalın mesajlarını okuma iznin yok. Başka bir kanal seç."
+              : "Mesaj geçmişi yüklenemedi. F5 ile tekrar dene.";
+      if (history_errors_.contains(channel) || history_errors_.size() < 64)
+        history_errors_[channel] = message;
+      if (channel != text_channel_)
+        return;
+      note(message, true);
+      return;
+    }
     auto request = e.value("request", uint64_t{});
     if (request)
       for (auto &[_, draft] : drafts_)
@@ -642,7 +686,8 @@ void App::command(std::string action) {
       auto gid = str(c, "guild_id");
       auto url = "https://discord.com/channels/" + (gid.empty() ? "@me" : gid) +
                  "/" + text_channel_ + "/" + id;
-      if (!open_external(url)) note("Mesaj bağlantısı açılamadı.", true);
+      if (!open_external(url))
+        note("Mesaj bağlantısı açılamadı.", true);
     }
   }
 }
@@ -1178,57 +1223,66 @@ void App::draw_chat(Canvas &c, Rect a) {
   c.line(a.x, a.y + 2, a.w);
   int compose_y = a.y + a.h - 5, body_y = a.y + 3,
       body_h = std::max(1, compose_y - body_y - 1);
-  struct Line {
-    std::string text, id;
-    Tone tone;
-  };
-  std::vector<Line> lines;
-  auto found = messages_.find(text_channel_);
-  std::string day;
-  if (found != messages_.end())
-    for (const auto &m : found->second) {
-      auto content = str(m, "content");
-      auto author = m.value("author", Json::object());
-      auto name =
-          str(author, "global_name", str(author, "username", "Bilinmeyen"));
-      if (!filter_.empty() &&
-          folded(name + " " + content).find(folded(filter_)) ==
-              std::string::npos)
-        continue;
-      auto clock = local_time(str(m, "timestamp"));
-      if (clock.first != day) {
-        day = clock.first;
-        lines.push_back({"────────  " + day + "  ────────", "", Dim});
+  auto &lines = chat_lines_;
+  if (layout_revision_ != message_revision_ || layout_width_ != a.w ||
+      layout_channel_ != text_channel_ || layout_filter_ != filter_ ||
+      layout_user_ != str(me_, "id")) {
+    lines.clear();
+    layout_revision_ = message_revision_;
+    layout_width_ = a.w;
+    layout_channel_ = text_channel_;
+    layout_filter_ = filter_;
+    layout_user_ = str(me_, "id");
+    const auto folded_filter = folded(filter_);
+    auto found = messages_.find(text_channel_);
+    std::string day;
+    if (found != messages_.end())
+      for (const auto &m : found->second) {
+        auto content = str(m, "content");
+        auto author = m.value("author", Json::object());
+        auto name =
+            str(author, "global_name", str(author, "username", "Bilinmeyen"));
+        if (!filter_.empty() &&
+            folded(name + " " + content).find(folded_filter) ==
+                std::string::npos)
+          continue;
+        auto clock = local_time(str(m, "timestamp"));
+        if (clock.first != day) {
+          day = clock.first;
+          lines.push_back({"────────  " + day + "  ────────", "", Dim});
+        }
+        auto id = str(m, "id");
+        auto label = fit(name, std::max(8, a.w - 20), true) + "  " +
+                     clock.second +
+                     (m.value("edited", false) ? "  (düzenlendi)" : "");
+        lines.push_back(
+            {label, id, str(author, "id") == str(me_, "id") ? Mint : Violet});
+        if (m.contains("reply_preview"))
+          lines.push_back(
+              {"↳ " + fit(str(m, "reply_preview"), a.w - 7, true), id, Dim});
+        else if (!str(m, "reply_to").empty())
+          lines.push_back({"↳ bir mesaja yanıt", id, Dim});
+        if (!content.empty())
+          for (auto &row : wrap(content, std::max(1, a.w - 6), true))
+            lines.push_back({row, id, Text});
+        for (const auto &att : m.value("attachments", Json::array()))
+          lines.push_back(
+              {"[dosya] " + str(att, "filename") + " · " +
+                   std::to_string(att.value("size", uint64_t{}) / 1024) + " KB",
+               id, Accent});
+        lines.push_back({"", id, Dim});
       }
-      auto id = str(m, "id");
-      auto label = fit(name, std::max(8, a.w - 20), true) + "  " +
-                   clock.second +
-                   (m.value("edited", false) ? "  (düzenlendi)" : "");
-      lines.push_back(
-          {label, id, str(author, "id") == str(me_, "id") ? Mint : Violet});
-      if (m.contains("reply_preview"))
-        lines.push_back(
-            {"↳ " + fit(str(m, "reply_preview"), a.w - 7, true), id, Dim});
-      else if (!str(m, "reply_to").empty())
-        lines.push_back({"↳ bir mesaja yanıt", id, Dim});
-      if (!content.empty())
-        for (auto &row : wrap(content, std::max(1, a.w - 6), true))
-          lines.push_back({row, id, Text});
-      for (const auto &att : m.value("attachments", Json::array()))
-        lines.push_back(
-            {"[dosya] " + str(att, "filename") + " · " +
-                 std::to_string(att.value("size", uint64_t{}) / 1024) + " KB",
-             id, Accent});
-      lines.push_back({"", id, Dim});
-    }
+  }
   if (lines.empty()) {
     int y = body_y + std::max(1, body_h / 3);
     c.put(a.x + 3, y, "Biraz daha sakin bir Discord.", White, Base, a.w - 6,
           true);
     c.put(a.x + 3, y + 2,
-          text_channel_.empty() ? "Soldan bir kanal seçerek başla."
-          : filter_.empty()     ? "Henüz mesaj yok veya geçmiş yükleniyor."
-                                : "Bu aramayla eşleşen yüklü mesaj yok.",
+          history_errors_.contains(text_channel_)
+              ? history_errors_.at(text_channel_)
+          : text_channel_.empty() ? "Soldan bir kanal seçerek başla."
+          : filter_.empty()       ? "Henüz mesaj yok veya geçmiş yükleniyor."
+                                  : "Bu aramayla eşleşen yüklü mesaj yok.",
           Dim, Base, a.w - 6);
     c.put(a.x + 3, y + 4, "Ctrl+K: hızlı geçiş / komutlar", Accent, Base,
           a.w - 6);
@@ -1251,7 +1305,10 @@ void App::draw_chat(Canvas &c, Rect a) {
             {{a.x + 1, body_y + row, a.w - 2, 1}, "message", 0, line.id});
     }
   }
-  if (!filter_.empty())
+  if (history_errors_.contains(text_channel_))
+    c.put(a.x + 2, compose_y - 1, history_errors_.at(text_channel_), Amber,
+          Base, a.w - 4);
+  else if (!filter_.empty())
     c.put(a.x + 2, compose_y - 1, "Arama: " + filter_ + " · Esc temizler",
           Amber, Base, a.w - 4);
   else if (scroll_)
@@ -1965,6 +2022,74 @@ void App::self_test() {
               protected_app.drafts_[protected_app.text_channel_].edit.text ==
                   "korunacak taslak",
           "Restricted account sent a message or lost its draft");
+  App cached(nullptr, Json::object(), {}, true);
+  cached.seed_demo();
+  cached.render(150, 42);
+  auto layout = cached.chat_lines_.size();
+  cached.input({"", "draft only"});
+  cached.render(150, 42);
+  require(cached.chat_lines_.size() == layout &&
+              cached.layout_revision_ == cached.message_revision_,
+          "Composer changed the history layout");
+  cached.apply({{"type", "message_edit"},
+                {"channel", "200"},
+                {"id", "900"},
+                {"patch", {{"content", "layout invalidation fixture"}}}});
+  cached.render(150, 42);
+  require(std::any_of(cached.chat_lines_.begin(), cached.chat_lines_.end(),
+                      [](const auto &line) {
+                        return line.text == "layout invalidation fixture";
+                      }),
+          "Edited message kept a stale history layout");
+  cached.apply({{"type", "error"},
+                {"operation", "history:200"},
+                {"status", 403},
+                {"message", "Missing Access"}});
+  require(cached.history_errors_.contains("200") && !cached.writes_blocked_,
+          "Channel permission failure confused with account restriction");
+  cached.apply(
+      {{"type", "history"}, {"channel", "200"}, {"items", Json::array()}});
+  require(cached.history_errors_.empty(),
+          "Successful history did not clear its error");
+  for (int i = 0; i < 100; ++i) {
+    auto channel = std::to_string(9000 + i);
+    cached.apply(
+        {{"type", "message_delete"}, {"channel", channel}, {"id", "1"}});
+    cached.apply({{"type", "message"},
+                  {"data", {{"channel_id", channel}, {"id", "2"}}}});
+  }
+  require(cached.deleted_.empty() && cached.messages_.size() == 1,
+          "Offscreen events allocated unused history or tombstones");
+  App paging(nullptr, Json::object(), {}, true);
+  paging.text_channel_ = "200";
+  for (int i = 1000; i < 1510; ++i)
+    paging.merge({{"id", std::to_string(i)}, {"channel_id", "200"}});
+  require(paging.messages_.at("200").size() == 500 &&
+              str(paging.messages_.at("200").front(), "id") == "1010",
+          "Recent history limit or snowflake order failed");
+  Json older = Json::array();
+  for (int i = 1009; i >= 960; --i)
+    older.push_back({{"id", std::to_string(i)}, {"channel_id", "200"}});
+  paging.apply({{"type", "history"},
+                {"channel", "200"},
+                {"older", true},
+                {"items", older}});
+  require(paging.messages_.at("200").size() == 500 &&
+              str(paging.messages_.at("200").front(), "id") == "960" &&
+              str(paging.messages_.at("200").back(), "id") == "1459",
+          "Older page was discarded at the history limit");
+  paging.merge({{"id", "960"}, {"channel_id", "200"}, {"content", "updated"}});
+  require(paging.messages_.at("200").size() == 500 &&
+              str(paging.messages_.at("200").front(), "content") == "updated",
+          "Sorted insertion duplicated a known message");
+  for (int i = 1; i <= 11; ++i)
+    paging.merge({{"id", "1"}, {"channel_id", std::to_string(i)}});
+  paging.choose_channel({{"id", "1"}, {"type", 0}});
+  paging.merge({{"id", "1"}, {"channel_id", "12"}});
+  require(paging.messages_.size() == 12 && paging.history_use_.size() == 12 &&
+              paging.messages_.contains("1") &&
+              !paging.messages_.contains("200"),
+          "History eviction did not retain the recently visited channel");
   for (auto [w, h] : {std::pair{150, 42}, std::pair{100, 30}, std::pair{80, 25},
                       std::pair{60, 20}})
     for (int view = 0; view < 4; ++view) {

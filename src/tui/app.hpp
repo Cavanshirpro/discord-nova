@@ -1,7 +1,7 @@
 #pragma once
 #include "backend.hpp"
-#include "text.hpp"
 #include "input.hpp"
+#include "text.hpp"
 #include <chrono>
 #include <deque>
 #include <map>
@@ -23,10 +23,21 @@ class App {
                 dms_ = Json::array(), friends_ = Json::array(),
                 voice_ = Json::object();
   std::map<std::string, Json> channels_, messages_;
+  std::map<std::string, uint64_t> history_use_;
+  uint64_t history_clock_ = 0;
   std::map<std::string, std::set<std::string>> deleted_;
   std::map<std::string, Draft> drafts_;
   std::map<std::string, int> unread_;
   std::map<std::string, std::string> presence_;
+  std::map<std::string, std::string> history_errors_;
+  struct ChatLine {
+    std::string text, id;
+    Tone tone;
+  };
+  std::vector<ChatLine> chat_lines_;
+  uint64_t message_revision_ = 0, layout_revision_ = uint64_t(-1);
+  int layout_width_ = 0;
+  std::string layout_channel_, layout_filter_, layout_user_;
   std::map<std::string, std::chrono::steady_clock::time_point> typing_;
   std::deque<std::pair<std::string, std::string>> events_;
   std::filesystem::path config_path_, root_;

@@ -52,6 +52,12 @@ static Json channel_json(const discord::Channel &c) {
           {"guild_id", c.guild_id ? c.guild_id->str() : ""},
           {"topic", c.topic.value_or("")}};
 }
+static discord::ClientOptions tui_options(discord::ClientOptions options) {
+  // The UI owns a bounded history cache and consumes partial edit events.
+  // Keeping a second SDK message cache duplicates content and attachments.
+  options.message_cache_size = 0;
+  return options;
+}
 struct Backend::Impl {
   discord::Client api, live;
   std::string token, me;
@@ -75,7 +81,7 @@ struct Backend::Impl {
   bool started = false;
   Impl(Json config, std::string value, std::filesystem::path root,
        const discord::ClientOptions &options)
-      : api(options), live(options), token(std::move(value)),
+      : api(tui_options(options)), live(tui_options(options)), token(std::move(value)),
         recordings(std::move(root)) {
     media_options.transport = options;
     media_options.guild_id = config.at("guild_id").get<discord::Snowflake>();
@@ -310,9 +316,14 @@ void Backend::start(bool gateway) {
   p.live.on_ready([&p](const discord::Ready &r) {
     p.post({{"type", "connection"}, {"online", true}});
     p.post({{"type", "me"}, {"user", user_json(r.user)}});
+    // Retry bootstrap reads after the authenticated session becomes ready.
+    // Pending reads coalesce; writes are never replayed here.
+    p.bootstrap();
   });
-  p.live.on_resumed(
-      [&p] { p.post({{"type", "connection"}, {"online", true}}); });
+  p.live.on_resumed([&p] {
+    p.post({{"type", "connection"}, {"online", true}});
+    p.bootstrap();
+  });
   p.live.on_message([&p](const discord::Message &m) {
     p.post({{"type", "message"}, {"data", message_json(m)}});
   });

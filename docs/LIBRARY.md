@@ -1,8 +1,8 @@
 # discord.cpp-self integration
 
 Development pins discord.cpp-self commit
-`0d37a2ebe160601a9d2e219004bcbe4b39b94c7f` (v0.2.2 plus browser identity
-and media transport options). Published Nova v0.1.0 pins v0.2.1 at
+`914662b2c74440bb0c0bdc9355e9ba41e57d024b` (v0.2.2 plus browser identity,
+media transport options and compressed REST response decoding). Published Nova v0.1.0 pins v0.2.1 at
 `a8681265e0c6ee58017639070c891d06d9624d8e`. CMake links `discord::self`.
 No library fork or replacement network implementation is included in Nova.
 

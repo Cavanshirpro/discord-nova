@@ -1,5 +1,6 @@
 """Exercise NOVA's actual SDK-backed jobs against a local HTTP server only."""
 import http.server
+import gzip
 import json
 from pathlib import Path
 import subprocess
@@ -30,6 +31,7 @@ class Http(http.server.BaseHTTPRequestHandler):
             assert self.headers.get('Authorization') == 'offline-token'
             if browser:
                 assert 'Chrome/152.' in self.headers.get('User-Agent', '')
+                assert self.headers.get('Accept-Encoding') == 'gzip, deflate, br, zstd'
             route = urllib.parse.urlparse(self.path)
             path = route.path.removeprefix('/api')
             query = urllib.parse.parse_qs(route.query)
@@ -62,8 +64,12 @@ class Http(http.server.BaseHTTPRequestHandler):
             elif path == '/users/101/profile': data = {'user': {'id': '101', 'username': 'friend'}, 'user_profile': {'bio': 'fixture'}}
             else: raise AssertionError(f'Unexpected request: {self.command} {path}')
             payload = json.dumps(data).encode() if data is not None else b''
+            if payload:
+                payload = gzip.compress(payload)
             self.send_response(status if data is not None else 204)
             self.send_header('Content-Type', 'application/json')
+            if payload:
+                self.send_header('Content-Encoding', 'gzip')
             self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
